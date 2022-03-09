@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "Ops Multi-Tool",
+  "version": "1.0",
+  "description": "Extension to automate common NBC OTS Operations web browser tasks",
+  "permissions": ["tabs","storage","notifications","commands","activeTab","scripting","downloads","contentSettings","power"],
+  "action": {
+    "default_title": "Ops Multi-Tool",
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "./img/multitool.png",
+      "32": "./img/multitool.png"
+    }
+  },
+  "commands": {
+    "call-letters": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Prompt for NBC market, get call letters."
+    },
+    "market-numbers": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Prompt for NBC market, get market numbers"
+    }
+  },
+  "host_permissions": [
+    "https://automatticstatus.com/*",
+    "https://theplatform.service-now.com/support_portal/*",
+    "https://script.google.com/macros/s/AKfycbyOsqxSw_xOF1sHf1yJTGcKl_F0Y4Zc6ff5NT2f6Y4/*",
+    "https://login.inbcu.com/*"
+  ],
+  "background":{
+      "service_worker": "background.js",
+      "type": "module"
+    },
+  "content_scripts": [
+    {
+      "matches": ["https://appstoreconnect.apple.com/apps/*/appstore/ios/version/*"],
+      "run_at": "document_idle",
+      "js": ["./content_scripts/apple-store.js"]
+    },
+    {
+      "matches": ["https://play.google.com/console/u/0/developers/5370792382133247542/app/*/app-dashboard"],
+      "run_at": "document_idle",
+      "js": ["./content_scripts/google-store.js"]
+    },
+    {
+      "matches": ["https://*/wp-admin/export-personal-data.php"],
+      "run_at": "document_idle",
+      "js": ["./content_scripts/export-personal-data.js"]
+    }
+  ]
+}

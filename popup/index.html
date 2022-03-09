@@ -1,0 +1,46 @@
+<html>
+    <head>
+        <title>Ops Multi-Tool Extension</title>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <header>
+            <img src="img/nbcu-logo.png" id="logo" alt="NBCU Logo"/>
+            <h1 id="title">Ops multiTool</h1>
+        </header>
+        <main>
+            <fieldset id="cli-container" class="cli no-border">
+                <legend id="cli-heading" class="cli grid-heading">VIP CLI</legend>
+                <div id="cli-btns" class="cli btn-grid hidden">
+                    <button id="clear-cache-btn" class="cli cli-btn action-btn">Clear Post Cache</button>
+                    <button id="clear-hp-cache-btn" class="cli cli-btn action-btn">Clear Homepage Cache</button>
+                    <button id="trigger-syndication-btn" class="cli cli-btn action-btn">Trigger Syndication</button>
+                    <button id="export-upd-btn" class="cli cli-btn action-btn">Export User Personal Data</button>
+                </div>
+            </fieldset>
+            <fieldset id="tools-container" class="tools no-border">
+                <legend id="tools-heading" class="tools grid-heading">Tools</legend>
+                <div id="tools-btns" class="tools btn-grid hidden">
+                    <button id="autofill-app-btn" class="tools action-btn">Autofill App Release</button>
+                </div>
+            </fieldset>
+            <fieldset id="ccpa-container" class="ccpa no-border">
+                <legend id="ccpa-heading" class="ccpa grid-heading">CCPA</legend>
+                <div id="ccpa-btns" class="ccpa btn-grid hidden">
+                    <button id="create-delete-exports-btn" class="ccpa export-btn action-btn">Create Delete Exports</button>
+                    <button id="create-access-exports-btn" class="ccpa export-btn action-btn">Create Access Exports</button>
+                    <button id="fetch-exports-btn" class="ccpa action-btn">Fetch Data Exports</button>
+                    <button id="respond-dsr-btn" class="ccpa action-btn"> Respond to DSRs</button>
+                </div>
+            </fieldset>
+        </main>
+        <footer>
+            <section id="status-section">
+                <p class="status">VIP status: <a id="vip-status" class="status-link" href="https://automatticstatus.com/" target="_blank"></a></p>
+                <p class="status">CVP status: <a id="cvp-status" class="status-link" href="https://theplatform.service-now.com/support_portal/ " target="_blank"></a></p>
+            </section>
+            <p>Extension <a href="https://developer.chrome.com/docs/extensions/mv3/overview/" target="_blank">documentation</a> | <span id="extension-version"></span></p>
+        </footer>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

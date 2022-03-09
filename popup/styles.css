@@ -1,0 +1,114 @@
+/*{
+    padding:0;
+    margin:0
+}*/
+body{
+    background-color: #3c0997;
+    width: 270px;
+    height: auto;
+    padding: 0px;
+    margin: 0px;
+    color: white !important;
+}
+#logo{
+    max-width: 100%;
+    height: auto;
+}
+header{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    margin: 10px 10px 0px 10px;
+}
+#title{
+    font-family: monospace, Courier;
+    font-size: 30px;
+}
+main{
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+    align-content: center;
+    margin: 0px 0px 70px 0px;
+}
+fieldset{
+    margin: 5px 10px 0px 10px;
+    padding: 5px;
+    border: 1px solid white;
+}
+.no-border{
+    border:none !important;
+    box-shadow:none !important;
+}
+.grid-heading{
+    font-size: 15px;
+    font-weight: bolder;
+    cursor: pointer;
+    font-family: monospace;
+}
+.btn-grid{
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    justify-items: center;
+    align-items: center;
+    grid-row-gap: 2px;
+}
+.hidden{
+    display:none !important;
+}
+.action-btn{
+    margin: 0px 0px 5px 0px;
+    padding: 5px;
+    width: 90%;
+    height: auto;
+    font-weight: bold;
+    font-size: 11px;
+    background-color: white;
+    cursor: pointer;
+    box-shadow: 3px 3px 5px black;
+}
+.action-btn:hover{
+    color: white;
+    background-color: #3c0997;
+}
+/*.cli-btn{
+    font-family: monospace;
+}*/
+.cli-btn:hover{
+    color: white !important;
+    background-color: black !important;
+    background-image: none !important;
+}
+#loading-img{
+    width: 40px;
+    height: auto;
+}
+footer{
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+    align-content: center;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    font-size: 11px;
+}
+#status-section{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    text-align: center;
+    align-items: center;
+    align-content: center;
+}
+.status-link{
+    text-decoration: none;
+    font-weight: bolder;
+}
+a{
+    color: white;
+}
