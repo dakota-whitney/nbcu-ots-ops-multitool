@@ -2,38 +2,6 @@ import * as extension from './extension.js';
 //Message listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch(message.request){
-        case "app-release":
-            if(sender.tab){
-                console.log(`Autofill complete message recieved from tab ${sender.tab.id}`);
-                sendResponse({});
-                chrome.storage.local.remove(message.marketKey)
-                .then(() => {
-                    chrome.storage.local.get(null)
-                    .then(storage => {
-                        const storeUrls = Object.values(storage).filter(value => value.storeUrl).map(marketData => marketData.storeUrl);
-                        if(storeUrls.length > 0){
-                            chrome.tabs.create({windowId:sender.tab.windowId,url:storeUrls[0]}).then(tab => console.log(`Tab ${tab.id} created`));
-                        }else{
-                            extension.createNotification('appReleaseComplete');
-                        };
-                    });
-                });
-            };
-            if(message.appData){
-                let marketObject = new Object;
-                const firstId = Object.keys(message.appData)[0];
-                marketObject[firstId] = message.appData[firstId];
-                console.log(marketObject[firstId].storeUrl);
-                chrome.storage.local.set(marketObject).then(() => chrome.windows.create({url:message.appData[firstId].storeUrl}).then(() => sendResponse()))
-                for(const [marketId,marketData] of Object.entries(message.appData)){
-                    if(typeof marketData === "object"){
-                        marketObject = new Object;
-                        marketObject[marketId] = marketData;
-                        chrome.storage.local.set(marketObject).then(() => console.log(`${marketObject} stored`));
-                    };
-                };
-            };
-        break;
         case "export-personal-data":
             const exportPages = extension.otsDomains.map(domain => `https://${domain}/wp-admin/export-personal-data.php`);
             const currentExportPage = sender.tab ? exportPages.findIndex(exportPage => sender.tab.url.includes(exportPage)) : 0;
@@ -125,13 +93,13 @@ chrome.tabs.onUpdated.addListener((tabId,changeInfo,tab) => {
 //Suspend listener
 chrome.runtime.onSuspend.addListener(() => {
     console.log(`onSuspend triggered`);
-    chrome.storage.local.clear({});
+    chrome.storage.local.remove('exportStatus');
     chrome.contentSettings.automaticDownloads.clear({});
 });
 //SuspendCanceled
 chrome.runtime.onSuspendCanceled.addListener(() => {
     console.log(`onSuspendCanceled triggered`);
-    chrome.storage.local.clear({});
+    chrome.storage.local.remove('exportStatus');
     chrome.contentSettings.automaticDownloads.clear({});
 })
 //Storage listener

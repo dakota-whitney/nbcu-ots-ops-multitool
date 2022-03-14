@@ -51,8 +51,11 @@ fieldset{
 .btn-grid{
     display: grid !important;
     grid-template-columns: 1fr 1fr;
+    display: flex;
     justify-items: center;
+    justify-content: space-evenly;
     align-items: center;
+    align-content: center;
     grid-row-gap: 2px;
 }
 .hidden{
@@ -66,20 +69,27 @@ fieldset{
     font-weight: bold;
     font-size: 11px;
     background-color: white;
-    cursor: pointer;
     box-shadow: 3px 3px 5px black;
 }
-.action-btn:hover{
+.action-btn:enabled{
+    cursor: pointer;
+}
+.action-btn:enabled:hover{
     color: white;
     background-color: #3c0997;
 }
-/*.cli-btn{
-    font-family: monospace;
-}*/
-.cli-btn:hover{
+.cli-btn:enabled:hover{
     color: white !important;
     background-color: black !important;
     background-image: none !important;
+}
+.ingested{
+    background-color: darkred !important;
+    color: white !important;
+}
+.ingested:hover{
+    background-color: #3c0997 !important;
+    color: white !important;
 }
 #loading-img{
     width: 40px;
