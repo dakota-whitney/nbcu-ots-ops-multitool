@@ -29,19 +29,51 @@ export const showButtonGrid = legendId => {
         btnGrid.classList.toggle("hidden");
     };
 };
-//App Release Functions
-export const toggleIngested = ingestButton => {
-    if(ingestButton.classList.contains('ingested')){
-        ingestButton.innerText = 'Flush App Store Metadata';
-        ingestButton.onclick = flushAppMetadata;
-        ingestButton.nextElementSibling.disabled = false;
-    }else{
-        ingestButton.innerText = 'Ingest App Store Metadata';
-        ingestButton.onclick = ingestAppMetadata;
-        ingestButton.nextElementSibling.disabled = true;
+//VIP CLI Functions
+export const getCliCommand = (command,currentTabId) => {
+    chrome.scripting.executeScript({target:{tabId:currentTabId},func:getCommandString,args:[command]},commandString => {
+        commandString = commandString[0].result ? commandString[0].result : `Command not available`;
+        commandString.includes("vip") ? window.prompt(`Run the command below in your terminal:`,commandString) : undefined;
+        return commandString;
+    });
+};
+const getCommandString = command => {
+    console.log(`getCommandString injected successfully`);
+    const domain = window.location.href.split("/")[2];
+    let environment = domain.split(".")[0];
+    environment = environment.match(/ots|www/) ? "production" : environment = environment === "uat" ? "preprod" : environment = environment === "dev" ? "develop" : environment === "stage" ? "stage" : environment;
+    console.log(domain);
+    let postId = new String;
+    switch(command){
+        case "clear-cache":
+            postId = window.location.href.match(/\d{7}/)[0];
+            return postId ? `vip @nbcots.${environment} wp -y -- --url=${domain} nbc purge_post_cache ${postId}` : "";
+        case "clear-hp-cache":
+            return `vip @nbcots.${environment} wp nbc flush_homepage_cache -- --url=${domain}`;
+        case "trigger-syndication":
+            if(window.location.href.match(/&action=edit/)){
+                let originatingPostId = Array.from(document.querySelectorAll("a.components-button")).find(link => link.innerText.includes("Originating"));
+                if(originatingPostId){
+                    originatingPostId = originatingPostId.href.match(/(?<=post=)\d+/)[0];
+                    return `vip @nbcots.${environment} wp -y -- --url=${domain} --user=feed-consumer@nbc.local nbc trigger_syndication ${originatingPostId}`;
+                };
+            };
+        break;
     };
 };
-export const ingestAppMetadata = e => {
+//App Release Functions
+export const toggleAppDataStatus = fetchButton => {
+    if(fetchButton.classList.contains('fetched')){
+        fetchButton.innerText = 'Flush App Store Metadata';
+        fetchButton.onclick = flushAppMetadata;
+        fetchButton.nextElementSibling.disabled = false;
+    }else{
+        fetchButton.innerText = 'Fetch App Store Metadata';
+        fetchButton.onclick = fetchAppMetadata;
+        fetchButton.nextElementSibling.disabled = true;
+    };
+};
+const fetchAppMetadata = e => {
     const sheetId = window.prompt("App Metadata Sheet ID:");
     if(sheetId){
         setLoading(e.target);
@@ -54,9 +86,9 @@ export const ingestAppMetadata = e => {
                 setLoading(e.target,false);
                 chrome.tabs.query({active:true,currentWindow:true}).then(tabs => {
                     chrome.scripting.executeScript({target:{tabId:tabs[0].id},func:logAppMetadata,args:[metadataObject]}).then(() => {
-                        window.alert(`App release metadata has been successfully ingested. See browser console to inspect.`);
-                        e.target.classList.toggle('ingested');
-                        toggleIngested(e.target);
+                        window.alert(`App release metadata has been successfully fetched. See browser console to inspect.`);
+                        e.target.classList.toggle('fetched');
+                        toggleAppDataStatus(e.target);
                     });
                 })
             });
@@ -67,29 +99,16 @@ export const ingestAppMetadata = e => {
         });
     };
 };
-export const flushAppMetadata = e => {
+const flushAppMetadata = e => {
     setLoading(e.target);
     chrome.storage.local.remove('otsAppMetadata').then(() => {
         setLoading(e.target,false);
         console.log(`Removed otsAppMetadata from Chrome storage`);
         window.alert(`Successfully flushed app store metadata`);
-        e.target.classList.toggle('ingested');
-        toggleIngested(e.target);
+        e.target.classList.toggle('fetched');
+        toggleAppDataStatus(e.target);
     });
 };
-/*export const verifyAppData = appDataObject => {
-    const newVersion = Object.values(appDataObject).find(value => value.appVersion).appVersion;
-    const platform = Object.values(appDataObject).find(value => value.platform).platform;
-    if(window.confirm(`Would you like to create a new ${platform} release for app version ${newVersion}`)){
-        //Verify further data in this loop
-        for(const [marketId,marketData] of Object.entries(appDataObject)){
-            if(newVersion !== marketData.appVersion){
-                return window.alert(`Mismatching version number found in sheet: ${marketData.appName}: ${marketData.appVersion}\nPlease review the app metadata sheet and try again`)
-            };
-        };
-        return true;
-    };
-};*/
 export const logAppMetadata = metadataObject => {
     console.group(`Ops Multitool:`);
     console.log(`App store metadata for this version:`);
@@ -100,39 +119,38 @@ export const logAppMetadata = metadataObject => {
     };
     console.groupEnd();
 };
-//VIP CLI Functions
-export const getCliCommand = (command,currentTabId) => {
-    chrome.scripting.executeScript({target:{tabId:currentTabId},func:getCommandString,args:[command]},commandString => {
-        commandString = commandString[0].result ? commandString[0].result : `Command not available`;
-        commandString.includes("vip") ? window.prompt(`Run the command below in your terminal:`,commandString) : window.alert(commandString);
-        return commandString;
-    });
-};
-const getCommandString = command => {
-    console.log(`getCommandString injected successfully`);
-    const domain = window.location.href.split("/")[2];
-    let environment = domain.split(".")[0];
-    environment = environment.match(/ots|www/) ? "production" : environment = environment === "uat" ? "preprod" : environment = environment === "dev" ? "develop" : environment;
-    console.log(domain);
-    let postId = new String;
-    switch(command){
-        case "clear-cache":
-            postId = window.location.href.match(/\d{7}/)[0];
-            return postId ? `vip @nbcots.${environment} wp -y -- --url=${domain} nbc purge_post_cache ${postId}` : "";
-        case "clear-hp-cache":
-            return domain.match(marketRegex) ? `vip @nbcots.${environment} wp nbc flush_homepage_cache -- --url=${domain}` : "";
-        case "trigger-syndication":
-            if(window.location.href.match(/&action=edit/)){
-                let originatingPostId = Array.from(document.querySelectorAll("a.components-button")).find(link => link.innerText.includes("Originating"));
-                if(originatingPostId){
-                    originatingPostId = originatingPostId.href.match(/(?<=post=)\d+/)[0];
-                    return `vip @nbcots.${environment} wp -y -- --url=${domain} --user=feed-consumer@nbc.local nbc trigger_syndication ${originatingPostId}`;
-                };
-            };
-        break;
+//CCPA Functions
+export const toggleExportStatus = exportButton => {
+    if(exportButton.classList.contains('exporting')){
+        exportButton.innerText = 'Stop Exports';
+        exportButton.onclick = stopExports;
+    }else{
+        exportButton.innerText = 'Fetch Data Exports';
+        exportButton.onclick = startExports;
     };
 };
-//CCPA Functions
+const startExports = e => {
+    if(window.confirm(`Please verify you are logged in to NBCU SSO before launching export sites`)){
+        chrome.contentSettings.automaticDownloads.set({primaryPattern:`https://*/*`,setting:'allow'},() => {
+            chrome.power.requestKeepAwake('system');
+            chrome.runtime.sendMessage({request:`export-personal-data`,startDownloads:true});
+            e.target.classList.toggle('exporting');
+            toggleExportStatus(e.target);
+        });
+    };
+};
+const stopExports = e => {
+    chrome.storage.local.get('exportWindow').then(storageObject => {
+        chrome.windows.get(storageObject.exportWindow).then(window => chrome.windows.remove(window.id));
+        chrome.storage.local.remove('exportWindow');
+        chrome.action.setBadgeText({text:""});
+        chrome.contentSettings.automaticDownloads.clear({});
+        chrome.power.releaseKeepAwake();
+        window.alert(`Exporting has been stopped. Any exports that have been downloaded will remain in your Downloads folder`);
+        e.target.classList.toggle('exporting');
+        toggleExportStatus(e.target);
+    });
+};
 export const ccpaExportPII = (requestType,currentTabId) => {
     console.log(`Request Type: ${requestType}`);
     chrome.scripting.executeScript({target:{tabId:currentTabId},func:getDsrBatch,args:[requestType]})

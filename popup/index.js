@@ -68,21 +68,23 @@ chrome.tabs.query({active:true,currentWindow:true})
             exportBtn.disabled = true;
         };
     });
-    chrome.storage.local.get('otsAppMetadata').then(storageObject => {
-        const ingestButton = document.getElementById("ingest-app-metadata-btn");
-        if(!storageObject.otsAppMetadata){
-            popup.toggleIngested(ingestButton);
-        }else{
-            ingestButton.classList.toggle('ingested');
-            popup.toggleIngested(ingestButton);
-        };
-    });
+    if(currentTab.url.match(/https:\/\/appstoreconnect\.apple\.com\/apps\/\d+\/appstore/)){
+        document.getElementById('autofill-metadata-btn').addEventListener('click',() => chrome.tabs.sendMessage(currentTab.id,{command:'autofill'}));
+    };
 });
-document.getElementById("fetch-exports-btn").addEventListener('click',event => {
-    if(window.confirm(`Please verify you are logged in to NBCU SSO before launching export sites`)){
-        chrome.contentSettings.automaticDownloads.set({primaryPattern:`https://*/*`,setting:'allow'},() => {
-            chrome.power.requestKeepAwake('system');
-            chrome.runtime.sendMessage({request:`export-personal-data`,startDownloads:true});
-        });
+chrome.storage.local.get(null).then(storageObject => {
+    const fetchMetadataButton = document.getElementById("fetch-app-metadata-btn");
+    const fetchExportButton = document.getElementById("fetch-exports-btn");
+    if(!storageObject.otsAppMetadata){
+        popup.toggleAppDataStatus(fetchMetadataButton);
+    }else{
+        fetchMetadataButton.classList.toggle('fetched');
+        popup.toggleAppDataStatus(fetchMetadataButton);
+    };
+    if(!storageObject.exportWindow){
+        popup.toggleExportStatus(fetchExportButton);
+    }else{
+        fetchExportButton.classList.toggle('exporting');
+        popup.toggleExportStatus(fetchExportButton);
     };
 });

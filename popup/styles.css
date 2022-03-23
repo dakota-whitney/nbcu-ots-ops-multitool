@@ -73,6 +73,7 @@ fieldset{
 }
 .action-btn:enabled{
     cursor: pointer;
+    background-color: white;
 }
 .action-btn:enabled:hover{
     color: white;
@@ -83,11 +84,11 @@ fieldset{
     background-color: black !important;
     background-image: none !important;
 }
-.ingested{
+.fetched,.exporting{
     background-color: darkred !important;
     color: white !important;
 }
-.ingested:hover{
+.fetched:hover{
     background-color: #3c0997 !important;
     color: white !important;
 }

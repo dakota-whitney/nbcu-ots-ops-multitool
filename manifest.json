@@ -35,24 +35,19 @@
     "https://login.inbcu.com/*"
   ],
   "background":{
-      "service_worker": "background.js",
+      "service_worker": "listener.js",
       "type": "module"
     },
   "content_scripts": [
     {
-      "matches": ["https://appstoreconnect.apple.com/apps/*/appstore/ios/version/*"],
-      "run_at": "document_idle",
-      "js": ["./content_scripts/apple-store.js"]
-    },
-    {
-      "matches": ["https://play.google.com/console/u/0/developers/5370792382133247542/app/*/app-dashboard"],
-      "run_at": "document_idle",
-      "js": ["./content_scripts/google-store.js"]
-    },
-    {
       "matches": ["https://*/wp-admin/export-personal-data.php"],
       "run_at": "document_idle",
       "js": ["./content_scripts/export-personal-data.js"]
+    },
+    {
+      "matches": ["https://appstoreconnect.apple.com/apps/*/appstore/*"],
+      "run_at": "document_idle",
+      "js": ["./content_scripts/apple-store.js"]
     }
   ]
 }

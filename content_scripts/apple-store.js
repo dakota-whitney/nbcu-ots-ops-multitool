@@ -1,81 +1,64 @@
-(() => {
-    const hasLoaded = selector => new Promise((resolve,reject) => {
-        let queries = 0;
-        const intervalId = setInterval(() => {
-            //Queries the DOM every second for 2 minutes
-            if(document.querySelector(selector)){
-                clearInterval(intervalId);
-                resolve(document.querySelector(selector));
-            };
-            queries++;
-            if(queries >= 120){
-                clearInterval(intervalId);
-                reject(`Could not identify element with selector ${selector}`);
-            };
-            console.log(`Scanned for element with selector ${selector} ${queries} time(s)`);
-        },500)
-    });
+chrome.storage.local.get('otsAppMetadata')
+.then(storageObject => {
     const appleId = window.location.href.split("/").find(path => path.match(/^\d+$/));
-    document.body.onload = chrome.storage.local.get('otsAppMetadata')
-    .then(storageObject => {
+    if(storageObject.otsAppMetadata[appleId]){
+        console.clear();
         console.group('Ops Multitool');
         console.log(`Apple ID: ${appleId}`);
-        if(storageObject.otsAppMetadata[appleId]){
-            console.log(`This market's metadata:`);
-            console.log(storageObject.otsAppMetadata[appleId]);
-            console.log('See store URLs below:')
-            for(const [marketId,marketData] of Object.entries(storageObject.otsAppMetadata)){
-                marketId !== appleId ? console.log(`${marketData.market}: ${marketData.storeUrl}`) : undefined;
-            }
-            /*(async () => {
-                console.log(`Begin autofill`);
-                Add version
-                const addVersion = await hasLoaded('#IOS_app_versions-add-button');
-                setTimeout(() => addVersion.click(),1000);
-                const agreementUpdate = await hasLoaded('div.modal-footer___2XcPF > div > button');
-                if(agreementUpdate){
-                    agreementUpdate.click();
-                    const addVersion = await hasLoaded('#IOS_app_versions-add-button');
-                    addVersion.click();
-                };
-                const versionInput = await hasLoaded('input#versionString.has-meta');
-                const createButton = await hasLoaded('button[data-id="create-new-version"]');
-                versionInput.value = marketData["changes"]["Version"];
-                createButton.classList.remove('tb-btn--disabled');
-
-                Autofill data
-                const inputEvent = new InputEvent('input');
-                const promotionalText = await hasLoaded('div[name="promotionalText"]');
-                promotionalText.innerText = `Promotional text here`;
-                promotionalText.value = `Promotional text here`;
-                promotionalText.innerText = marketData["changes"]["Promotional Text"];
-                const whatsNew = await hasLoaded('div[name="whatsNew"]');
-                whatsNew.innerText = `What's new here`;
-                whatsNew.value = `What's new here`;
-                const description = await hasLoaded('div[name="description"]');
-                description.innerText = 'Description here';
-                description.value = `Description here`;
-                description.innerText = marketData["changes"]["Description"];
-                description.value = marketData["changes"]["Description"];
-                description.dispatchEvent(inputEvent);
-                const keywords = await hasLoaded('input[name="keywords"]');
-                keywords.value = `Keywords here`;
-                keywords.value = marketData["changes"]["Keywords"];
-                keywords.dispatchEvent(inputEvent);
-                const supportUrl = await hasLoaded('input[name="supportUrl"]');
-                supportUrl.value = marketData["changes"]["Support URL"] ? marketData["changes"]["Support URL"] : "";
-                supportUrl.dispatchEvent(inputEvent);
-                const versionInput = await hasLoaded('input[name="versionString"]');
-                versionInput.value = marketData["changes"]["Version"] ? marketData["changes"]["Version"] : "";
-                const manualRelease = await hasLoaded('#manualRelease');
-                manualRelease.click();
-                const saveButton = await hasLoaded("#heading-buttons > button");
-                saveButton.click();
-            })();*/
-            console.groupEnd();
-        }else{
-            throw new Error(`Could not retrieve object with ID ${appleId} from Chrome storage`);
+        const marketData = storageObject.otsAppMetadata[appleId];
+        console.log(`This market's metadata:`);
+        console.log(marketData.storeChanges);
+        console.log('App Store Connect URLs:');
+        for(const [marketId,storeData] of Object.entries(storageObject.otsAppMetadata)) marketId !== appleId ? console.log(`${storeData.market}\n${storeData.storeUrl}`) : undefined;
+        const selectorMetadataMap = {
+            "div[name='promotionalText']": "Promotional Text",
+            "div[name='whatsNew']": "What's New  in This Version",
+            "div[name='description']": "Description",
+            "input[name='keywords']": "Keywords",
+            "input[name='supportUrl']": "Support URL",
+            "input[name='versionString']": "Version",
+            "input[name='versionString'].has-meta": "Version",
+            "#name":"Name",
+            "#subtitle":"Subtitle",
         };
-    })
-    .catch(error => new Error(error.message));
-})();
+        const autofillAppleStore = () => {
+            for(let [inputElement,metadata] of Object.entries(selectorMetadataMap)){
+                inputElement = document.querySelector(inputElement);
+                metadata = marketData["storeChanges"][metadata];
+                if(inputElement && !inputElement.disabled && metadata){
+                    inputElement.dispatchEvent(new InputEvent('input'));
+                    inputElement.value = metadata;
+                    inputElement.innerText = metadata;
+                    inputElement.style.color = '#3c0997';
+                    inputElement.style.border = '2px solid #3c0997';
+                }else console.warn(`Failed to autofill \nElement: ${inputElement}\nMetadata: ${metadata}`)
+            };
+            document.querySelector("button.select-builds-button___1E97t") ? document.querySelector("button.select-builds-button___1E97t").click() : undefined;
+        };
+        const handleMutation = mutationList => {
+            mutationList.forEach(mutationRecord => {
+                if(mutationRecord.target.querySelector("div.ReactVirtualized__Table__row.selectable")){
+                    const versionBuild = Array.from(document.querySelectorAll("div.ReactVirtualized__Table__row.selectable")).find(build => build.children[2].innerText == marketData["storeChanges"]["Version"]);
+                    if(versionBuild) versionBuild.click();
+                    const doneButton = Array.from(document.querySelectorAll("div.ReactModalPortal")).find(modal => modal.innerText.includes("Add Build")).querySelector("button[type='primary']");
+                    if(doneButton){
+                        doneButton.click();
+                        observer.disconnect();
+                    };
+                };
+                if(mutationRecord.target.querySelector("input[name='versionString'].has-meta")) autofillAppleStore();
+            });
+        };
+        const observer = new MutationObserver(handleMutation);
+        observer.observe(document.querySelector("body"),{childList:true,subtree:true});
+        chrome.runtime.onMessage.addListener((message,sender,sendResponse) => {
+            switch(message.command){
+                case "autofill":
+                    autofillAppleStore();
+                break;
+            };
+        });
+        console.groupEnd();
+    }else{throw new Error(`Could not retrieve object with ID ${appleId} from Chrome storage`)};
+})
+.catch(error => new Error(error.message));
