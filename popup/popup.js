@@ -131,25 +131,15 @@ export const toggleExportStatus = exportButton => {
 };
 const startExports = e => {
     if(window.confirm(`Please verify you are logged in to NBCU SSO before launching export sites`)){
-        chrome.contentSettings.automaticDownloads.set({primaryPattern:`https://*/*`,setting:'allow'},() => {
-            chrome.power.requestKeepAwake('system');
-            chrome.runtime.sendMessage({request:`export-personal-data`,startDownloads:true});
-            e.target.classList.toggle('exporting');
-            toggleExportStatus(e.target);
-        });
-    };
-};
-const stopExports = e => {
-    chrome.storage.local.get('exportWindow').then(storageObject => {
-        chrome.windows.get(storageObject.exportWindow).then(window => chrome.windows.remove(window.id));
-        chrome.storage.local.remove('exportWindow');
-        chrome.action.setBadgeText({text:""});
-        chrome.contentSettings.automaticDownloads.clear({});
-        chrome.power.releaseKeepAwake();
-        window.alert(`Exporting has been stopped. Any exports that have been downloaded will remain in your Downloads folder`);
+        chrome.runtime.sendMessage({request:'start-exports'})
         e.target.classList.toggle('exporting');
         toggleExportStatus(e.target);
-    });
+    };
+};
+export const stopExports = e => {
+    chrome.runtime.sendMessage({request:'stop-exports'})
+    e.target.classList.toggle('exporting');
+    toggleExportStatus(e.target);
 };
 export const ccpaExportPII = (requestType,currentTabId) => {
     console.log(`Request Type: ${requestType}`);

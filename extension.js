@@ -1,11 +1,5 @@
 export const createNotification = notificationId => {
     const notifications = {
-        appReleaseComplete: {
-            type:"basic",
-            iconUrl:"/img/multitool.png",
-            title:`App Release Notification`,
-            message:`App release process has completed. Please verify data and submit releases`
-        },
         storageQuotaExceeded: {
             type:"basic",
             iconUrl:"/img/extension.png",
@@ -23,6 +17,30 @@ export const createNotification = notificationId => {
         console.log(`Notification ${notificationId} was created`);
         setTimeout(() => chrome.notifications.clear(notificationId,wasCleared => console.log(`Notification ${notificationId} ${wasCleared ? 'was' : 'was not'} cleared`)),5000)
     });
+};
+export const stopExports = errorMessage => {
+    chrome.storage.local.remove(['exportPageRequestCount','exportPageIndex']).then(() => chrome.runtime.sendMessage({toggleExportStatus:true}))
+    chrome.contentSettings.automaticDownloads.clear({});
+    chrome.power.releaseKeepAwake();
+    if(errorMessage) throw new Error(errorMessage);
+};
+export const openNextExportTab = async currentExportPage => {
+    console.log(`Current export page: ${currentExportPage.url}`);
+    let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex')
+    console.log(`exportPageIndex: ${exportPageIndex}`);
+    exportPageIndex++;
+    if(otsDomains[exportPageIndex]){
+        const nextExportPage = `https://${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
+        console.log(`Next export page: ${nextExportPage}`);
+        chrome.tabs.create({windowId:currentExportPage.windowId,url:nextExportPage}).then(() => chrome.tabs.remove(currentExportPage.id))
+    }else{
+        console.log(`Exports complete.\nResetting extension export settings`);
+        chrome.windows.remove(currentExportPage.windowId)
+        .then(() => {
+            stopExports();
+            createNotification('ccpaDownloadsComplete');
+        });
+    };
 };
 export const getCallLetters = callLetterObject => {
     let input = new String;

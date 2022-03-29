@@ -51,15 +51,17 @@ document.querySelectorAll('.grid-heading').forEach(gridHeading => gridHeading.ad
 chrome.tabs.query({active:true,currentWindow:true})
 .then(tabs => {
     const currentTab = tabs[0];
-    document.querySelectorAll('.cli-btn').forEach(cliButton => {
-        if(currentTab.url.match(/(www|ots|uat|stage|dev)?\.(nbc|telemundo|lx|cleartheshelters|cozitv)\w+\d*\.com/)){
+    const marketRegex = /(www|ots|uat|stage|dev)?\.(nbc|telemundo|lx|cleartheshelters|cozitv)\w+\d*\.com/;
+    if(currentTab.url.match(marketRegex)){
+        document.querySelectorAll('.cli-btn').forEach(cliButton => {
             let command = cliButton.id.split("-");
             command = command.slice(0,command.length - 1).join("-");
             cliButton.addEventListener('click',() => popup.getCliCommand(command,currentTab.id));
-        }else{
-            cliButton.disabled = true;
-        };
-    });
+        });
+    }else{
+        document.querySelectorAll('.cli-btn').forEach(cliButton => cliButton.disabled = true);
+        document.getElementById("compare-settings-btn").disabled = true;
+    };
     document.querySelectorAll(".export-btn").forEach(exportBtn => {
         if(currentTab.url === "https://app.onetrust.com/dsar/queue"){
             const requestType = exportBtn.id.split['-'][1];
@@ -87,4 +89,11 @@ chrome.storage.local.get(null).then(storageObject => {
         fetchExportButton.classList.toggle('exporting');
         popup.toggleExportStatus(fetchExportButton);
     };
+    chrome.runtime.onMessage.addListener((message,sender,sendResponse) => {
+        if(message.toggleExportStatus) {
+            fetchExportButton.classList.toggle('exporting');
+            popup.toggleExportStatus(fetchExportButton)
+        };
+        return true;
+    });
 });

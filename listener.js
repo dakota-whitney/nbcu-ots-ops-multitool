@@ -1,105 +1,51 @@
 import * as extension from './extension.js';
 //Message listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log(`listener.js received ${message.request} request`)
     switch(message.request){
-        case "export-personal-data":
-            const exportPages = extension.otsDomains.map(domain => `https://${domain}/wp-admin/export-personal-data.php`);
-            const currentExportPage = sender.tab ? exportPages.findIndex(exportPage => exportPage == sender.tab.url) : -1;
-            console.log(`Current export page: ${exportPages[currentExportPage]}`)
-            if(message.startDownloads){
-                chrome.downloads.erase({query:['wp-personal-data-file']},() => {
-                    chrome.windows.create({url:exportPages[0]}).then(window => {
-                        console.log(`New window ${window.id} opened`);
-                        chrome.storage.local.set({exportWindow:window.id});
-                    });
-                });
-            };
-            if(message.requestCount){
-                const domain = sender.tab.url.split("/")[2];
-                chrome.downloads.search({query:["wp-personal-data-file"],urlRegex:domain,orderBy:["-startTime"],limit:message.requestCount},downloads => {
-                    console.log(`Exports found: ${downloads.length}`);
-                    sendResponse({status:`Exports found: ${downloads.length}`});
-                    const exportMessage = new Object;
-                    downloads.length < message.requestCount ? exportMessage.command = 'get-remaining-exports' : exportMessage.command = 'downloads-complete';
-                    chrome.tabs.sendMessage(sender.tab.id,exportMessage,response => console.log(response.status));
-                });
-            };
-            if(message.downloadsComplete){
-                console.log(`Received downloads complete message from export page`);
-                if(currentExportPage !== -1){
-                    if(exportPages[currentExportPage + 1]){
-                        console.log(`Opening next export page: ${exportPages[currentExportPage + 1]}`);
-                        chrome.tabs.create({windowId:sender.tab.windowId,url:exportPages[currentExportPage + 1]},() => chrome.tabs.remove(sender.tab.id));
-                    }else{
-                        console.log(`Last export page ${exportPages[currentExportPage]} has finished downloading exports\nResetting extension export settings`)
-                        chrome.tabs.remove(sender.tab.id,() => {
-                            chrome.contentSettings.automaticDownloads.clear({});
-                            chrome.storage.local.remove('exportWindow');
-                            chrome.power.releaseKeepAwake();
-                            chrome.downloads.erase({query:['wp-personal-data-file']});
-                            extension.createNotification('ccpaDownloadsComplete');
-                        });
-                    };
-                }else throw new Error(`Could not identify export page ${currentExportPage}`);
-            };
+        case "start-exports":
+            chrome.downloads.erase({query:['wp-personal-data-file']},() => {
+                chrome.contentSettings.automaticDownloads.set({primaryPattern:`https://*/*`,setting:'allow'})
+                chrome.power.requestKeepAwake('system');
+                chrome.action.setBadgeText({text:'0'});
+                chrome.storage.local.set({exportPageRequestCount:0,exportPageIndex:0})
+                .then(() => chrome.windows.create({state:"minimized",url:`https://${extension.otsDomains[0]}/wp-admin/export-personal-data.php`}))
+            });
+        break;
+        case "stop-exports":
+            extension.stopExports("Exports were stopped by the extension UI");
         break;
     };
     return true; //Required if using async code above
 });
-//Download listener
-chrome.downloads.onDeterminingFilename.addListener((download,suggest) => {
+chrome.downloads.onDeterminingFilename.addListener(async (download,suggest) => {
     console.log(`Download detected:`);
     console.log(download);
     if(download.filename.match('wp-personal-data-file')){
         suggest();
-        chrome.storage.local.get('exportWindow',storageObject => {
-            if(storageObject.exportWindow){
-                if(download.filename.match(/\(\d\).zip$/)){
-                    chrome.downloads.removeFile(download.id,() => {
-                        console.log(`${download.filename} removed from disk`);
-                        chrome.downloads.erase({id:download.id},() => console.log(`${download.filename} removed from Chrome history`))
-                    });
-                }else{
-                    chrome.downloads.search({query:["wp-personal-data-file"]},downloads => chrome.action.setBadgeText({text:`${downloads.length}`}));
-                    let requestor = download.filename.split("-");
-                    requestor = requestor.slice(4,requestor.findIndex(elem => elem == "at"))[0].replaceAll(/\W/g,"").toLowerCase();
-                    chrome.tabs.query({url:download.referrer},tabs => {
-                        console.log(`Export page found: ${tabs[0].id}\nSending remove-request to export page`);
-                        chrome.tabs.sendMessage(tabs[0].id,{command:'remove-request',requestor:requestor},response => console.log(response.status));
-                    });
-                };
+        const {exportPageRequestCount} = await chrome.storage.local.get('exportPageRequestCount');
+        if(exportPageRequestCount && !download.filename.match(/\(\d\).zip$/)){
+            let completedExports = await chrome.downloads.search({query:["wp-personal-data-file"]});
+            completedExports.length >= 1000 ? chrome.action.setBadgeText({text:`1k+`}) : chrome.action.setBadgeText({text:`${completedExports.length}`});
+            completedExports = Array.from(completedExports).filter(dataExport => dataExport.referrer == download.referrer);
+            console.log(`Completed exports for market ${download.referrer.split("/")[2]}: ${completedExports.length} / ${exportPageRequestCount}`)
+            let currentExportTab = await chrome.tabs.query({url:download.referrer});
+            currentExportTab = currentExportTab[0];
+            if(completedExports.length >= exportPageRequestCount){
+                extension.openNextExportTab(currentExportTab)
+            }else{
+                let requestor = download.filename.split("-");
+                requestor = requestor.slice(4,requestor.findIndex(elem => elem == "at"))[0].replaceAll(/\W/g,"").toLowerCase();
+                chrome.tabs.sendMessage(currentExportTab.id,{command:'remove-request',requestor:requestor})
+                .then(response => console.log(response.status))
+                .catch(error => extension.stopExports(error.message));
             };
-        });
+        };
     };
     return true;
 });
 //Download Erased Listener
-chrome.downloads.onErased.addListener((download) => {
-    console.log(`${download.filename} erased`);
-    chrome.storage.local.get('exportWindow').then(storageObject => {
-        if(storageObject.exportWindow){
-            chrome.downloads.search({query:["wp-personal-data-file"]},downloads => chrome.action.setBadgeText({text:`${downloads.length}`}));
-        };
-    });
-});
-//Tab listener
-chrome.tabs.onUpdated.addListener((tabId,changeInfo,tab) => {
-    //Listen for URL changes (errors) on the export pages
-    chrome.storage.local.get('exportWindow',storageObject => {
-        if(storageObject.exportWindow){
-            console.log('Tab Change Info:');
-            console.log(changeInfo);
-            if(tab.url.includes("wp-personal-data-file")){
-                let exportUrl = extension.otsDomains.find(domain => domain.match(tab.url.split("/")[2]));
-                exportUrl = `https://${exportUrl}/wp-admin/export-personal-data.php`;
-                chrome.tabs.create({windowId:tab.windowId,url:exportUrl},() => chrome.tabs.remove(tabId));
-            };
-            /*if(tab.url.match(/(inbcu.com\/login)|(\/wp-login.php\?)/)){
-                chrome.scripting.executeScript({target:{tabId:tabId},func:() => window.alert('You are not logged in to NBCU SSO. Please login to continue')})
-            };*/
-        };
-    });
- });
+chrome.downloads.onErased.addListener(download => console.log(`${download.filename} erased`));
 //Storage listener
 chrome.storage.onChanged.addListener((changes,namespace) => {
     for(let [key,{oldValue,newValue}] of Object.entries(changes)){
@@ -143,16 +89,10 @@ chrome.commands.onCommand.addListener((command,tab) => {
 //Suspend listener
 chrome.runtime.onSuspend.addListener(() => {
     console.log(`onSuspend triggered`);
-    chrome.storage.local.remove('exportWindow');
-    chrome.power.releaseKeepAwake();
-    chrome.contentSettings.automaticDownloads.clear({});
-    chrome.action.setBadgeText({text:""});
+    extension.stopExports();
 });
 //SuspendCanceled
 chrome.runtime.onSuspendCanceled.addListener(() => {
     console.log(`onSuspendCanceled triggered`);
-    chrome.storage.local.remove('exportWindow');
-    chrome.power.releaseKeepAwake();
-    chrome.contentSettings.automaticDownloads.clear({});
-    chrome.action.setBadgeText({text:""});
+    extension.stopExports();
 });
