@@ -11,6 +11,10 @@
             "#name":"Name",
             "#subtitle":"Subtitle",
         };
+        console.clear();
+        console.group('Ops Multitool');
+        console.log(`This market's metadata:`);
+        console.log(marketData);
         for(let [inputElement,metadataKey] of Object.entries(selectorMetadataMap)){
             inputElement = document.querySelector(inputElement);
             const {[metadataKey]:metadata} = marketDataObject;
@@ -23,7 +27,9 @@
             }else console.warn(`Failed to autofill \nElement: ${inputElement}\nMetadata: ${metadata}`)
         };
         document.querySelector("button.select-builds-button___1E97t") ? document.querySelector("button.select-builds-button___1E97t").click() : undefined;
+        console.log('App Store Connect URLs:');
         for(const [storeId,storeData] of Object.entries(marketDataObject)) console.log(`${storeData.market}\n${storeData.storeUrl}`);
+        console.groupEnd();
     };
     const handleMutation = mutationList => {
         mutationList.forEach(mutationRecord => {
@@ -41,15 +47,9 @@
         });
     };
     const appleId = window.location.href.split("/").find(path => path.match(/^\d+$/));
-    const {[appleId]:marketData} = await chrome.storage.local.get(appleId);
-    console.clear();
-    console.group('Ops Multitool');
     console.log(`Apple ID: ${appleId}`);
-    console.log(`This market's metadata:`);
-    console.log(marketData);
-    console.log('App Store Connect URLs:');
+    const {[appleId]:marketData} = await chrome.storage.local.get(appleId);
     const observer = new MutationObserver(handleMutation);
     observer.observe(document.querySelector("body"),{childList:true,subtree:true});
     chrome.runtime.onMessage.addListener((message,sender,sendResponse) => autofillAppleStore(marketData))
-    console.groupEnd();
 })();
