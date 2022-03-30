@@ -46,7 +46,7 @@ const getCommandString = command => {
     let postId = new String;
     switch(command){
         case "clear-cache":
-            postId = window.location.href.match(/\d{7}/)[0];
+            postId = window.location.href.match(/\d{4,}/)[0];
             return postId ? `vip @nbcots.${environment} wp -y -- --url=${domain} nbc purge_post_cache ${postId}` : "";
         case "clear-hp-cache":
             return `vip @nbcots.${environment} wp nbc flush_homepage_cache -- --url=${domain}`;
@@ -78,19 +78,19 @@ const fetchAppMetadata = e => {
     if(sheetId){
         setLoading(e.target);
         fetch(`https://script.google.com/macros/s/AKfycbyOsqxSw_xOF1sHf1yJTGcKl_F0Y4Zc6ff5NT2f6Y4/dev?sheetId=${sheetId}`)
-        .then(response => response.json())
-        .then(metadataObject => {
-            const otsAppMetadata = {otsAppMetadata:metadataObject};
-            chrome.storage.local.set(otsAppMetadata).then(() => {
+        .then(async response => {
+            const otsAppMetadata = await response.json();
+            chrome.storage.local.set(otsAppMetadata)
+            .then(async () => {
                 console.log(`App Data stored as:\n${JSON.stringify(otsAppMetadata)}`);
                 setLoading(e.target,false);
-                chrome.tabs.query({active:true,currentWindow:true}).then(tabs => {
-                    chrome.scripting.executeScript({target:{tabId:tabs[0].id},func:logAppMetadata,args:[metadataObject]}).then(() => {
-                        window.alert(`App release metadata has been successfully fetched. See browser console to inspect.`);
-                        e.target.classList.toggle('fetched');
-                        toggleAppDataStatus(e.target);
-                    });
-                })
+                const [currentTab] = await chrome.tabs.query({active:true,currentWindow:true})
+                chrome.scripting.executeScript({target:{tabId:currentTab.id},func:logAppMetadata,args:[otsAppMetadata]})
+                .then(() => {
+                    window.alert(`App release metadata has been successfully fetched. See browser console to inspect.`);
+                    e.target.classList.toggle('fetched');
+                    toggleAppDataStatus(e.target);
+                });
             });
         })
         .catch(error => {

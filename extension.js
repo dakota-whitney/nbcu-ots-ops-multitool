@@ -29,6 +29,7 @@ export const openNextExportTab = async currentExportPage => {
     let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex')
     console.log(`exportPageIndex: ${exportPageIndex}`);
     exportPageIndex++;
+    chrome.storage.local.set({exportPageIndex:exportPageIndex})
     if(otsDomains[exportPageIndex]){
         const nextExportPage = `https://${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
         console.log(`Next export page: ${nextExportPage}`);

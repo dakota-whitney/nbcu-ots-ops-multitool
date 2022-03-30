@@ -17,7 +17,7 @@
                 });
             };
             const observer = new MutationObserver(handleMutation);
-            const userDataRequests = Array.from(document.getElementById("the-list").querySelectorAll("tr.status-request-completed"));
+            const userDataRequests = Array.from(document.getElementById("the-list").children);
             chrome.storage.local.set({exportPageRequestCount:userDataRequests.length}).then(() => downloadExports(userDataRequests))
             chrome.runtime.onMessage.addListener((message,sender,sendResponse) => {
                 switch(message.command){
