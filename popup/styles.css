@@ -51,7 +51,7 @@ fieldset{
 .btn-grid{
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    display: flex;
+    /*display: flex;*/
     justify-items: center;
     justify-content: space-evenly;
     align-items: center;

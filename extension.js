@@ -18,11 +18,24 @@ export const createNotification = notificationId => {
         setTimeout(() => chrome.notifications.clear(notificationId,wasCleared => console.log(`Notification ${notificationId} ${wasCleared ? 'was' : 'was not'} cleared`)),5000)
     });
 };
-export const stopExports = errorMessage => {
-    chrome.storage.local.remove(['exportPageRequestCount','exportPageIndex']).then(() => chrome.runtime.sendMessage({toggleExportStatus:true}))
+export const openExportWindow = async pageIndex => {
+    chrome.contentSettings.automaticDownloads.set({primaryPattern:`https://*/*`,setting:'allow'});
+    chrome.power.requestKeepAwake('system');
+    const exportWindow = await chrome.windows.create({state:'minimized',url:`https://stage.${otsDomains[pageIndex]}/wp-admin/export-personal-data.php`});
+    chrome.storage.local.set({exportWindow:exportWindow.id,exportPageRequestCount:0})
+};
+export const stopExports = async () => {
+    const {exportWindow} = await chrome.storage.local.get('exportWindow');
+    chrome.windows.remove(exportWindow);
+    const {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
+    const currentMarketExports = await chrome.downloads.search({query:['wp-personal-data-file'],orderBy:["startTime"],urlRegex:otsDomains[exportPageIndex]})
+    currentMarketExports.forEach((dataExport,i) => chrome.downloads.removeFile(dataExport.id).then(() => {
+        chrome.downloads.erase({id:dataExport.id})
+        if(i === currentMarketExports.length - 1) chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => chrome.action.setBadgeText({text:`${totalExports.length}`}))
+    }))
+    chrome.storage.local.remove(['exportPageRequestCount','exportWindow']);
     chrome.contentSettings.automaticDownloads.clear({});
     chrome.power.releaseKeepAwake();
-    if(errorMessage) throw new Error(errorMessage);
 };
 export const openNextExportTab = async currentExportPage => {
     console.log(`Current export page: ${currentExportPage.url}`);
@@ -31,16 +44,17 @@ export const openNextExportTab = async currentExportPage => {
     exportPageIndex++;
     chrome.storage.local.set({exportPageIndex:exportPageIndex})
     if(otsDomains[exportPageIndex]){
-        const nextExportPage = `https://${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
+        const nextExportPage = `https://stage.${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
         console.log(`Next export page: ${nextExportPage}`);
-        chrome.tabs.create({windowId:currentExportPage.windowId,url:nextExportPage}).then(() => chrome.tabs.remove(currentExportPage.id))
+        await chrome.tabs.create({windowId:currentExportPage.windowId,url:nextExportPage});
+        chrome.tabs.remove(currentExportPage.id);
     }else{
         console.log(`Exports complete.\nResetting extension export settings`);
-        chrome.windows.remove(currentExportPage.windowId)
-        .then(() => {
-            stopExports();
-            createNotification('ccpaDownloadsComplete');
-        });
+        await chrome.windows.remove(currentExportPage.windowId)
+        stopExports();
+        chrome.storage.local.remove('exportPageRequestCount');
+        chrome.action.setBadgeText({text:''});
+        createNotification('ccpaDownloadsComplete');
     };
 };
 export const getCallLetters = callLetterObject => {
@@ -101,47 +115,45 @@ export const getMarketNumbers = marketNumberObject => {
     return output;
 };
 export const otsDomains = [
-    "stage.nbcnewyork.com",
-    //"ots.nbcwpshield.com/telemundo",
-    "stage.nbcbayarea.com",
-    "stage.nbcboston.com",
-    "stage.nbcchicago.com",
-    "stage.nbcconnecticut.com",
-    "stage.nbcdfw.com",
-    "stage.nbclosangeles.com",
-    "stage.nbcmiami.com",
-    "stage.necn.com",
-    "stage.nbcphiladelphia.com",
-    "stage.nbcsandiego.com",
-    "stage.nbcwashington.com",
-    "stage.telemundoareadelabahia.com",
-    "stage.telemundochicago.com",
-    "stage.telemundodallas.com",
-    "stage.telemundodenver.com",
-    "stage.telemundo48elpaso.com",
-    "stage.telemundohouston.com",
-    "stage.telemundo52.com",
-    "stage.telemundolasvegas.com",
-    "stage.telemundo40.com",
-    "stage.telemundo51.com",
-    "stage.telemundo47.com",
-    "stage.telemundonuevainglaterra.com",
-    "stage.telemundo31.com",
-    "stage.telemundo62.com",
-    "stage.telemundoarizona.com",
-    "stage.telemundopr.com",
-    "stage.telemundosanantonio.com",
-    "stage.telemundo20.com",
-    "stage.telemundo49.com",
-    "stage.telemundowashingtondc.com",
-    "stage.telemundoutah.com",
-    "stage.telemundo33.com",
-    "stage.telemundofresno.com",
-    //"ots.nbcwpshield.com/qa",
-    "stage.lx.com",
-    "stage.cleartheshelters.com",
-    "stage.desocuparlosalbergues.com",
-    "stage.cozitv.com",
-    "stage.telexitos.com",
-    "stage.telemundonuevomexico.com",
+    "nbcnewyork.com",
+    "nbcbayarea.com",
+    "nbcboston.com",
+    "nbcchicago.com",
+    "nbcconnecticut.com",
+    "nbcdfw.com",
+    "nbclosangeles.com",
+    "nbcmiami.com",
+    "necn.com",
+    "nbcphiladelphia.com",
+    "nbcsandiego.com",
+    "nbcwashington.com",
+    "telemundoareadelabahia.com",
+    "telemundochicago.com",
+    "telemundodallas.com",
+    "telemundodenver.com",
+    "telemundo48elpaso.com",
+    "telemundohouston.com",
+    "telemundo52.com",
+    "telemundolasvegas.com",
+    "telemundo40.com",
+    "telemundo51.com",
+    "telemundo47.com",
+    "telemundonuevainglaterra.com",
+    "telemundo31.com",
+    "telemundo62.com",
+    "telemundoarizona.com",
+    "telemundopr.com",
+    "telemundosanantonio.com",
+    "telemundo20.com",
+    "telemundo49.com",
+    "telemundowashingtondc.com",
+    "telemundoutah.com",
+    "telemundo33.com",
+    "telemundofresno.com",
+    "lx.com",
+    "cleartheshelters.com",
+    "desocuparlosalbergues.com",
+    "cozitv.com",
+    "telexitos.com",
+    "telemundonuevomexico.com",
 ];
