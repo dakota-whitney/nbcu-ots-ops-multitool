@@ -1,23 +1,30 @@
 import * as extension from './extension.js';
 //Message listener
-chrome.runtime.onMessage.addListener((message,sender,sendResponse) => {
+chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
     console.log(`listener.js received ${message.request} request`)
     switch(message.request){
         case "start-exports":
-            chrome.downloads.erase({query:['wp-personal-data-file']})
-            chrome.action.setBadgeText({text:'0'});
-            extension.openExportWindow(0);
+            const {pageIndex} = message;
+            const totalExports = await chrome.downloads.search({query:['wp-personal-data-file']});
+            if(pageIndex > 0) chrome.action.setBadgeText({text:`${totalExports.length}`});
+            else{
+                totalExports.forEach(dataExport => {
+                    chrome.downloads.removeFile(dataExport.id)
+                    .then(() => chrome.downloads.erase({id:dataExport.id}))
+                    .catch(error => console.error(error.message));
+                });
+                chrome.action.setBadgeText({text:'0'});
+            };
+            extension.openExportWindow(pageIndex);
         break;
         case "stop-exports":
             extension.stopExports();
             sendResponse({status:`Data Requests have stopped downloading. Any exports already downloaded will remain in your downloads folder`})
         break;
-        case "resume-exports":
-            extension.openExportWindow(message.exportPageIndex);
         case "flush-ots-cache":
-            const domainsToFlush = extension.otsDomains.map(domain => `https://${message.environment}.${domain}/`);
-            chrome.browsingData.remove({"origins":domainsToFlush},{"appcache":true,"cache":true,"cacheStorage":true,});
-            sendResponse({status:`Browser cache for all OTS sites has been flushed`});
+            const {environment} = message;
+            const domainsToFlush = extension.otsDomains.map(domain => `https://${environment}.${domain}/`);
+            chrome.browsingData.remove({"origins":domainsToFlush},{"appcache":true,"cache":true,"cacheStorage":true,}).then(() => sendResponse({status:`Browser cache for all OTS sites has been flushed`}));
         break;
     };
     return true; //Required if using async code above

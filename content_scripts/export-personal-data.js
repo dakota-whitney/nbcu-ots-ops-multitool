@@ -1,5 +1,6 @@
 (async () => {
     let {exportPageRequestCount} = await chrome.storage.local.get('exportPageRequestCount');
+    if(exportPageRequestCount === undefined) return;
     console.log(`Content script injected successfully`);
     const downloadExports = dataRequests => {
         if(dataRequests.length > 0){

@@ -29,10 +29,11 @@ export const stopExports = async () => {
     chrome.windows.remove(exportWindow);
     const {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
     const currentMarketExports = await chrome.downloads.search({query:['wp-personal-data-file'],orderBy:["startTime"],urlRegex:otsDomains[exportPageIndex]})
-    currentMarketExports.forEach((dataExport,i) => chrome.downloads.removeFile(dataExport.id).then(() => {
-        chrome.downloads.erase({id:dataExport.id})
+    currentMarketExports.forEach(async (dataExport,i) => {
+        await chrome.downloads.removeFile(dataExport.id)
+        await chrome.downloads.erase({id:dataExport.id});
         if(i === currentMarketExports.length - 1) chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => chrome.action.setBadgeText({text:`${totalExports.length}`}))
-    }))
+    })
     chrome.storage.local.remove(['exportPageRequestCount','exportWindow']);
     chrome.contentSettings.automaticDownloads.clear({});
     chrome.power.releaseKeepAwake();
@@ -43,7 +44,7 @@ export const openNextExportTab = async currentExportPage => {
     console.log(`exportPageIndex: ${exportPageIndex}`);
     exportPageIndex++;
     chrome.storage.local.set({exportPageIndex:exportPageIndex})
-    if(otsDomains[exportPageIndex]){
+    if(exportPageIndex <= otsDomains.length - 1){
         const nextExportPage = `https://stage.${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
         console.log(`Next export page: ${nextExportPage}`);
         await chrome.tabs.create({windowId:currentExportPage.windowId,url:nextExportPage});
@@ -52,7 +53,7 @@ export const openNextExportTab = async currentExportPage => {
         console.log(`Exports complete.\nResetting extension export settings`);
         await chrome.windows.remove(currentExportPage.windowId)
         stopExports();
-        chrome.storage.local.remove('exportPageRequestCount');
+        chrome.storage.local.remove('exportPageIndex');
         chrome.action.setBadgeText({text:''});
         createNotification('ccpaDownloadsComplete');
     };
