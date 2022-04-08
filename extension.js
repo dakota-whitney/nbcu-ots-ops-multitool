@@ -29,17 +29,21 @@ export const stopExports = async () => {
     chrome.windows.remove(exportWindow);
     const {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
     const currentMarketExports = await chrome.downloads.search({query:['wp-personal-data-file'],orderBy:["startTime"],urlRegex:otsDomains[exportPageIndex]})
-    currentMarketExports.forEach(async (dataExport,i) => {
-        await chrome.downloads.removeFile(dataExport.id)
-        await chrome.downloads.erase({id:dataExport.id});
-        if(i === currentMarketExports.length - 1) chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => chrome.action.setBadgeText({text:`${totalExports.length}`}))
-    })
+    if(currentMarketExports.length > 0){
+        currentMarketExports.forEach(async (dataExport,i) => {
+            await chrome.downloads.removeFile(dataExport.id)
+            await chrome.downloads.erase({id:dataExport.id});
+            if(i === currentMarketExports.length - 1) chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => chrome.action.setBadgeText({text:`${totalExports.length}`}))
+        });
+    }else chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => totalExports.length > 0 ? chrome.action.setBadgeText({text:`${totalExports.length}`}) : chrome.action.setBadgeText({text:""}));
     chrome.storage.local.remove(['exportPageRequestCount','exportWindow']);
     chrome.contentSettings.automaticDownloads.clear({});
     chrome.power.releaseKeepAwake();
 };
 export const openNextExportTab = async currentExportPage => {
     console.log(`Current export page: ${currentExportPage.url}`);
+    chrome.downloads.search({query:['wp-personal-data-file','(',')']})
+    .then(duplicateExports => duplicateExports.forEach(duplicate => chrome.downloads.removeFile(duplicate.id).then(() => chrome.downloads.erase({id:duplicate.id}))));
     let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex')
     console.log(`exportPageIndex: ${exportPageIndex}`);
     exportPageIndex++;

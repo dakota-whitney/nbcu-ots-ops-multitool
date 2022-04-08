@@ -4,6 +4,7 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
     console.log(`listener.js received ${message.request} request`)
     switch(message.request){
         case "start-exports":
+            sendResponse({status:'starting exports'})
             const {pageIndex} = message;
             const totalExports = await chrome.downloads.search({query:['wp-personal-data-file']});
             if(pageIndex > 0) chrome.action.setBadgeText({text:`${totalExports.length}`});
@@ -24,7 +25,8 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
         case "flush-ots-cache":
             const {environment} = message;
             const domainsToFlush = extension.otsDomains.map(domain => `https://${environment}.${domain}/`);
-            chrome.browsingData.remove({"origins":domainsToFlush},{"appcache":true,"cache":true,"cacheStorage":true,}).then(() => sendResponse({status:`Browser cache for all OTS sites has been flushed`}));
+            chrome.browsingData.remove({"origins":domainsToFlush},{"appcache":true,"cache":true,"cacheStorage":true,});
+            sendResponse({status:`Browser cache for all OTS sites has been flushed`})
         break;
     };
     return true; //Required if using async code above
@@ -38,7 +40,7 @@ chrome.downloads.onDeterminingFilename.addListener(async (download,suggest) => {
         if(!exportPageRequestCount || download.filename.match(/\(\d\).zip$/)) return;
         let completedExports = await chrome.downloads.search({query:["wp-personal-data-file"]});
         completedExports.length >= 1000 ? chrome.action.setBadgeText({text:`${(completedExports.length / 1000).toString().substring(0,3)}k`}) : chrome.action.setBadgeText({text:`${completedExports.length}`});
-        completedExports = Array.from(completedExports).filter(dataExport => dataExport.referrer == download.referrer);
+        completedExports = completedExports.filter(dataExport => dataExport.referrer == download.referrer);
         console.log(`Completed exports for market ${download.referrer.split("/")[2]}: ${completedExports.length} / ${exportPageRequestCount}`)
         const [currentExportTab] = await chrome.tabs.query({url:download.referrer});
         if(completedExports.length >= exportPageRequestCount) extension.openNextExportTab(currentExportTab)

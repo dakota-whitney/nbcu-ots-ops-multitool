@@ -1,46 +1,48 @@
 import * as popup from './popup.js';
 fetch("https://automatticstatus.com/rss")
-.then(response => response.text())
-.then(xmlString => new DOMParser().parseFromString(xmlString,"text/xml"))
-.then(statusNodes => {
-    const vipStatus = document.getElementById("vip-status");
-    let isUp = true;
+.then(async response => {
+    const xmlString = await response.text();
+    const statusNodes = new DOMParser().parseFromString(xmlString,"text/xml");
+    let outage = false;
     Array.from(statusNodes.getElementsByTagName("title")).forEach(title => {
         title = title.textContent;
-        title.includes("Outage") || title.includes("Degraded") ? isUp = false : undefined;
+        if(title.includes("Outage") || title.includes("Degraded")) outage = true
     });
-    isUp ? vipStatus.setAttribute("style","color:lightgreen;") : vipStatus.setAttribute("style","color:red;");
-    vipStatus.innerText = isUp ? "Good" : "Alert";
+    const vipStatus = document.getElementById("vip-status");
+    vipStatus.setAttribute("style","color:lightgreen;");
+    vipStatus.innerText = "Good";
+    if(outage){
+        vipStatus.setAttribute("style","color:red;");
+        vipStatus.innerText = "Alert";
+    };
 })
 .catch(error => {
-    document.getElementById("vip-status").setAttribute("style","color:red;");
-    document.getElementById("vip-status").innerText = `ERROR`;
+    const vipStatus = document.getElementById("vip-status");
+    vipStatus.setAttribute("style","color:red;");
+    vipStatus.innerText = `ERROR`;
     throw new Error(error.message);
 });
 fetch("https://theplatform.service-now.com/support_portal/")
-.then(response => response.text())
-.then(htmlString => new DOMParser().parseFromString(htmlString,"text/html"))
-.then(domObject => {
-    console.log(domObject.title);
-    const cvpStatus = document.getElementById("cvp-status");
-    if(domObject.title.includes("Login")){
-        cvpStatus.setAttribute("style","color:yellow;")
-        cvpStatus.innerText = "Login";
-    };
-    if(domObject.querySelector(".status-container")){
-        if(domObject.querySelector(".status-container").innerText.includes("Normal")){
-            cvpStatus.setAttribute("style","color:lightgreen;")
-            cvpStatus.innerText = "Good";
-        }else{
-            console.log(domObject.querySelector(".status-container").innerText)
-            cvpStatus.setAttribute("style","color:red;")
-            cvpStatus.innerText = "Alert";
-        };
+.then(async response => {
+    const htmlString = await response.text();
+    const domObject = new DOMParser().parseFromString(htmlString,"text/html");
+    const cvpStatusDisplay = document.getElementById("cvp-status");
+    cvpStatusDisplay.setAttribute("style","color:yellow;")
+    cvpStatusDisplay.innerText = "Login";
+    const cvpStatus = domObject.querySelector(".status-container");
+    if(!cvpStatus) return
+    cvpStatusDisplay.setAttribute("style","color:lightgreen;")
+    cvpStatusDisplay.innerText = "Good";
+    if(!cvpStatus.innerText.includes("Normal")){
+        console.log(`CVP Status: ${cvpStatus.innerText}`);
+        cvpStatusDisplay.setAttribute("style","color:red;")
+        cvpStatusDisplay.innerText = "Alert";
     };
 })
 .catch(error => {
-    document.getElementById("cvp-status").setAttribute("style","color:red;");
-    document.getElementById("cvp-status").innerText = `ERROR`;
+    const cvpStatus = document.getElementById("cvp-status");
+    cvpStatus.setAttribute("style","color:red;");
+    cvpStatus.innerText = `ERROR`;
     throw new Error(error.message);
 });
 document.getElementById('extension-version').innerText = `Version ${chrome.runtime.getManifest().version}`;
@@ -49,10 +51,17 @@ chrome.tabs.query({active:true,currentWindow:true})
 .then(async tabs => {
     const [currentTab] = tabs;
     const marketRegex = /(www|ots|uat|stage|dev)?\.(nbc|telemundo|lx|cleartheshelters|cozitv)\w+\d*\.com/;
-    if(currentTab.url.match(marketRegex))document.querySelectorAll('.cli-btn').forEach(cliButton => cliButton.addEventListener('click',e => popup.getCliCommand(currentTab.id,e.target.id)));
+    const cliButtons = document.querySelectorAll('.cli-btn');
+    const flushOtsCacheBtn = document.getElementById('flush-ots-cache');
+    const compareSettingsBtn = document.getElementById("compare-settings");
+    if(currentTab.url.match(marketRegex)){
+        cliButtons.forEach(cliButton => cliButton.addEventListener('click',e => popup.getCliCommand(currentTab.id,e.target.id)));
+        flushOtsCacheBtn.addEventListener('click',e => popup.requestFlushCache(currentTab.url,e.target.id));
+    }
     else{
-        document.querySelectorAll('.cli-btn').forEach(cliButton => cliButton.disabled = true);
-        document.getElementById("compare-settings").disabled = true;
+        cliButtons.forEach(cliButton => cliButton.disabled = true);
+        flushOtsCacheBtn.disabled = true;
+        compareSettingsBtn.disabled = true;
     };
     const storageObject = await chrome.storage.local.get(null)
     const fetchExportButton = document.getElementById("fetch-data-exports");
@@ -68,5 +77,4 @@ chrome.tabs.query({active:true,currentWindow:true})
     if(currentTab.url.match(/https:\/\/appstoreconnect\.apple\.com\/apps\/\d+\/appstore/)){
         document.getElementById('autofill-metadata').addEventListener('click',() => chrome.tabs.sendMessage(currentTab.id,{command:'autofill'}).then(response => console.log(`From App Store page: ${response.status}`)));
     };
-    document.getElementById('flush-ots-cache').addEventListener('click',e => popup.requestFlushCache(currentTab.url,e.target.id));
 });
