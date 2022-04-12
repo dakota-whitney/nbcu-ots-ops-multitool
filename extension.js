@@ -26,7 +26,7 @@ export const openExportWindow = async pageIndex => {
 };
 export const stopExports = async () => {
     const {exportWindow} = await chrome.storage.local.get('exportWindow');
-    chrome.windows.remove(exportWindow);
+    chrome.windows.remove(exportWindow).catch(error => console.log(error.message));
     const {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
     const currentMarketExports = await chrome.downloads.search({query:['wp-personal-data-file'],orderBy:["startTime"],urlRegex:otsDomains[exportPageIndex]})
     if(currentMarketExports.length > 0){
@@ -42,7 +42,7 @@ export const stopExports = async () => {
 };
 export const openNextExportTab = async currentExportPage => {
     console.log(`Current export page: ${currentExportPage.url}`);
-    chrome.downloads.search({query:['wp-personal-data-file','(',')']})
+    chrome.downloads.search({query:['wp-personal-data-file','(',')'],state:"complete"})
     .then(duplicateExports => duplicateExports.forEach(duplicate => chrome.downloads.removeFile(duplicate.id).then(() => chrome.downloads.erase({id:duplicate.id}))));
     let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex')
     console.log(`exportPageIndex: ${exportPageIndex}`);

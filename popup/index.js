@@ -51,29 +51,25 @@ chrome.tabs.query({active:true,currentWindow:true})
 .then(async tabs => {
     const [currentTab] = tabs;
     const marketRegex = /(www|ots|uat|stage|dev)?\.(nbc|telemundo|lx|cleartheshelters|cozitv)\w+\d*\.com/;
-    const cliButtons = document.querySelectorAll('.cli-btn');
-    const flushOtsCacheBtn = document.getElementById('flush-ots-cache');
-    const compareSettingsBtn = document.getElementById("compare-settings");
     if(currentTab.url.match(marketRegex)){
-        cliButtons.forEach(cliButton => cliButton.addEventListener('click',e => popup.getCliCommand(currentTab.id,e.target.id)));
-        flushOtsCacheBtn.addEventListener('click',e => popup.requestFlushCache(currentTab.url,e.target.id));
-    }
-    else{
-        cliButtons.forEach(cliButton => cliButton.disabled = true);
-        flushOtsCacheBtn.disabled = true;
-        compareSettingsBtn.disabled = true;
+        document.querySelectorAll('.cli-btn').forEach(cliButton => {
+            cliButton.disabled = false;
+            cliButton.addEventListener('click',e => popup.getCliCommand(currentTab.id,e.target.id))
+        });
     };
+    document.getElementById("compare-settings").addEventListener('click',() => popup.compareSettings(currentTab));
+    document.getElementById("backup-settings").addEventListener('click',() => popup.backupSettings(currentTab))
     const storageObject = await chrome.storage.local.get(null)
     const fetchExportButton = document.getElementById("fetch-data-exports");
     fetchExportButton.onclick = popup.startExports;
-    if(storageObject.hasOwnProperty('exportWindow')) popup.toggleExportStatus(fetchExportButton);
+    if(storageObject.exportWindow) popup.toggleExportStatus(fetchExportButton);
     document.querySelectorAll(".export-btn").forEach(exportBtn => {
         if(currentTab.url === "https://app.onetrust.com/dsar/queue") exportBtn.addEventListener('click',e => popup.writeDsrBatch(currentTab.id,e.target.id))
         else exportBtn.disabled = true;
     });
     const fetchMetadataButton = document.getElementById("fetch-app-metadata");
     fetchMetadataButton.onclick = popup.fetchAppMetadata;
-    if(storageObject.hasOwnProperty('otsAppMetadata')) popup.toggleAppStatus(fetchMetadataButton);
+    if(storageObject.otsAppMetadata) popup.toggleAppStatus(fetchMetadataButton);
     if(currentTab.url.match(/https:\/\/appstoreconnect\.apple\.com\/apps\/\d+\/appstore/)){
         document.getElementById('autofill-metadata').addEventListener('click',() => chrome.tabs.sendMessage(currentTab.id,{command:'autofill'}).then(response => console.log(`From App Store page: ${response.status}`)));
     };

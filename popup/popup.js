@@ -26,15 +26,55 @@ export const showButtonGrid = e => {
         btnGrid.classList.toggle("hidden");
     };
 };
-export const requestFlushCache = async (currentTabUrl,flushRequest) => {
-    const [environment] = currentTabUrl.split("/")[2].split(".");
-    const response = await chrome.runtime.sendMessage({request:flushRequest,environment:environment});
-    window.alert(response.status);
+//Wordpress functions
+export const compareSettings = currentTab => alert('Coming soon!');
+export const backupSettings = async currentTab => {
+    let backupScript = "";
+    if(currentTab.url.match(/\/wp-admin\//)) backupScript = getWpSettings;
+    else if(currentTab.url.match(/console.theplatform.com/)) backupScript = getCvpSettings;
+    else return alert("Invalid URL");
+    let [{result:wpSettings}] = await chrome.scripting.executeScript({target:{tabId:currentTab.id},func:backupScript});
+    if(!wpSettings) return;
+    wpSettings = JSON.stringify(wpSettings,null,2);
+    console.log(wpSettings);
+    const settingsBlob = new Blob([wpSettings],{type:'text/plain'});
+    await chrome.downloads.download({url:URL.createObjectURL(settingsBlob),saveAs:true});
+};
+const getWpSettings = () => {
+    const wpSettings = new Array;
+    const inputs = Array.from(document.getElementById("wpbody").querySelectorAll("input,select")).filter(input => input.id && input.value);
+    inputs.forEach((input,i) => {
+        const label = document.querySelector(`label[for="${input.id}"]`) ? document.querySelector(`label[for="${input.id}"]`).innerText : "";
+        if(!label) return;
+        input = input.querySelector("option[selected='selected']") ? input.querySelector("option[selected='selected']").innerText : input;
+        if(input.type === "checkbox") input = input.checked ? 'Checked' : 'Unchecked';
+        const settingsObject = {
+            setting: label,
+            value: typeof input === "string" ? input : input.value
+        };
+        wpSettings[i] = settingsObject;
+    });
+    console.log(wpSettings);
+    return wpSettings;
+};
+const getCvpSettings = () => {
+    const cvpSettings = new Array;
+    document.querySelectorAll(".Container-sc-sc-wiilmn").forEach((div,i) => {
+        const label = div.querySelector("label") ? div.querySelector("label").innerText : "";
+        if(!label) return;
+        let value = new String;
+        if(div.querySelector("textarea")) value = div.querySelector("textarea").innerText;
+        else if(div.querySelector("input")) value = div.querySelector("input").value;
+        else if(div.querySelector("div[data-e2e='tick-icon']")) value = div.querySelector("div[data-e2e='tick-icon']").value ? 'Checked' : 'Unchecked';
+        if(label) cvpSettings[i] = {setting:label,value:value}
+    });
+    console.log(cvpSettings);
+    return cvpSettings;
 };
 //VIP CLI Functions
 export const getCliCommand = async (currentTabId,command) => {
     const [{result:commandString}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},func:getCommandString,args:[command]});
-    return commandString ? window.prompt("Run the command below in your terminal:",commandString) : window.alert("Command not available");
+    return commandString ? window.prompt("Run the command below in your terminal:",commandString) : alert("Command not available");
 };
 //Content script
 const getCommandString = command => {
@@ -87,27 +127,31 @@ export const fetchAppMetadata = e => {
         toggleLoading(e.target);
         const [currentTab] = await chrome.tabs.query({active:true,currentWindow:true})
         await chrome.scripting.executeScript({target:{tabId:currentTab.id},func:logAppMetadata,args:[otsAppMetadata]});
-        window.alert(`App release metadata has been successfully fetched. See browser console to inspect.`);
+        alert(`App release metadata has been successfully fetched. See browser console to inspect.`);
         toggleAppStatus(e.target);
     })
     .catch(error => {
-        window.alert(`There was an unexpected error retrieving the app metadata. See extension log for more details`);
+        alert(`There was an unexpected error retrieving the app metadata. See extension log for more details`);
         throw new Error(error.message);
     });
 };
 const flushAppMetadata = async e => {
     await chrome.storage.local.remove('otsAppMetadata')
     console.log(`Removed otsAppMetadata from Chrome storage`);
-    window.alert(`Successfully flushed app store metadata`);
+    alert(`Successfully flushed app store metadata`);
     toggleAppStatus(e.target);
 };
 //Content script
 export const logAppMetadata = metadataObject => {
-    console.group(`Ops Multitool:`);
-    console.log(`App store metadata for this version:`);
+    const headingStyle = 'text-decoration:underline;font-weight:bolder;padding:5px;background-color:#3c0997;color:white;';
+    console.group(`%cOps Multitool:`,headingStyle);
+    console.log(`%cApp store metadata for this version:`,headingStyle);
     console.log(metadataObject);
-    console.log(`See below for the App Store URLs:`)
-    for(const [marketId,marketData] of Object.entries(metadataObject))console.log(`${marketData.market}: ${marketData.storeUrl}\n`);
+    console.log(`%cSee below for the App Store URLs:`,headingStyle)
+    for(const [marketId,marketData] of Object.entries(metadataObject)){
+        console.log(`%c${marketData.market}`,headingStyle);
+        console.log(marketData.storeUrl);
+    };
     console.groupEnd();
 };
 //CCPA Functions
@@ -131,7 +175,7 @@ export const startExports = async e => {
 };
 export const stopExports = async e => {
     const response = await chrome.runtime.sendMessage({request:'stop-exports'});
-    window.alert(response.status);
+    alert(response.status);
     toggleExportStatus(e.target);
 };
 export const writeDsrBatch = async (currentTabId,requestType) => {
@@ -139,7 +183,7 @@ export const writeDsrBatch = async (currentTabId,requestType) => {
     console.log(`Request Type: ${requestType}`);
     const [{result:exportResults}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},func:getDsrBatch,args:[requestType]})
     console.log(exportResults);
-    if(typeof exportResults == "string") return window.alert(exportResults);
+    if(typeof exportResults == "string") return alert(exportResults);
     const dsrPayload = {
         method:'POST',
         headers:{'Content-Type': 'application/json'},

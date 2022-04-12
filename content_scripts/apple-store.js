@@ -11,9 +11,10 @@
             "#name":"Name",
             "#subtitle":"Subtitle",
         };
+        const headingStyle = 'text-decoration:underline;font-weight:bolder;padding:5px;background-color:#3c0997;color:white;';
         console.clear();
-        console.group('Ops Multitool');
-        console.log(`This market's metadata:`);
+        console.group('%cOps Multitool',headingStyle);
+        console.log(`%cThis market's metadata:`,headingStyle);
         console.log(marketData);
         for(let [elementString,dataKey] of Object.entries(selectorMetadataMap)){
             const inputElement = document.querySelector(elementString);
@@ -24,12 +25,15 @@
                 inputElement.innerText = metadata;
                 inputElement.style.color = '#3c0997';
                 inputElement.style.border = '2px solid #3c0997';
-            }else console.log(`Failed to autofill \nElement: ${elementString}\nMetadata: ${metadata}`)
+            }else console.log(`%cFailed to autofill \nElement: ${elementString}\nMetadata: ${metadata}`,'color:yellow;font-style:italic;')
         };
         const selectBuildsBtn = document.querySelector("button.select-builds-button___1E97t");
         if(selectBuildsBtn) selectBuildsBtn.click();
-        console.log('App Store Connect URLs:');
-        for(const [marketId,storeData] of Object.entries(otsAppMetadata)) console.log(`${storeData.market}\n${storeData.storeUrl}`);
+        console.log('%cApp Store Connect URLs:',headingStyle);
+        for(const [marketId,storeData] of Object.entries(otsAppMetadata)){
+            console.log(`%c${storeData.market}`,headingStyle);
+            console.log(storeData.storeUrl);
+        };
         console.groupEnd();
     };
     const handleSelectBuilds = mutationList => {

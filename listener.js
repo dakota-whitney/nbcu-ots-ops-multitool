@@ -11,7 +11,7 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
             else{
                 totalExports.forEach(dataExport => {
                     chrome.downloads.removeFile(dataExport.id)
-                    .then(() => chrome.downloads.erase({id:dataExport.id}))
+                    .then(() => chrome.downloads.erase({id:dataExport.id}).catch(error => console.log(error.message)))
                     .catch(error => console.error(error.message));
                 });
                 chrome.action.setBadgeText({text:'0'});
