@@ -22,8 +22,10 @@
                 <div id="tools-btns" class="tools btn-grid hidden">
                     <button id="fetch-app-metadata" class="tools action-btn">Fetch App Store Metadata</button>
                     <button id="autofill-metadata" class="tools action-btn" disabled>Autofill App Store Metadata</button>
-                    <button id="compare-settings" class="tools action-btn">Compare Settings</button>
-                    <button id="backup-settings" class="tools action-btn">Backup Settings</button>
+                    <label for="domains" id="domains-label" class="domains hidden">Select a market:</label>
+                    <select name="domains" id="domains-list" class="domains hidden" size="4"></select>
+                    <button id="compare-settings" class="tools action-btn" disabled>Compare Settings</button>
+                    <button id="backup-settings" class="tools action-btn" disabled>Backup Settings</button>
                 </div>
             </fieldset>
             <fieldset id="ccpa-container" class="ccpa no-border">

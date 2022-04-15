@@ -30,8 +30,8 @@ fetch("https://theplatform.service-now.com/support_portal/")
     cvpStatusDisplay.setAttribute("style","color:yellow;")
     cvpStatusDisplay.innerText = "Login";
     const cvpStatus = domObject.querySelector(".status-container");
-    if(!cvpStatus) return
-    cvpStatusDisplay.setAttribute("style","color:lightgreen;")
+    if(!cvpStatus) return;
+    cvpStatusDisplay.setAttribute("style","color:lightgreen;");
     cvpStatusDisplay.innerText = "Good";
     if(!cvpStatus.innerText.includes("Normal")){
         console.log(`CVP Status: ${cvpStatus.innerText}`);
@@ -51,15 +51,19 @@ chrome.tabs.query({active:true,currentWindow:true})
 .then(async tabs => {
     const [currentTab] = tabs;
     const marketRegex = /(www|ots|uat|stage|dev)?\.(nbc|telemundo|lx|cleartheshelters|cozitv)\w+\d*\.com/;
+    const compareSettingsBtn = document.getElementById("compare-settings");
+    const backupSettingsBtn = document.getElementById("backup-settings");
     if(currentTab.url.match(marketRegex)){
         document.querySelectorAll('.cli-btn').forEach(cliButton => {
             cliButton.disabled = false;
             cliButton.addEventListener('click',e => popup.getCliCommand(currentTab.id,e.target.id))
         });
+        compareSettingsBtn.disabled = false;
+        compareSettingsBtn.addEventListener('click',popup.showDomainsList);
+        backupSettingsBtn.disabled = false;
+        backupSettingsBtn.addEventListener('click',() => popup.backupSettings(currentTab.id))
     };
-    document.getElementById("compare-settings").addEventListener('click',() => popup.compareSettings(currentTab));
-    document.getElementById("backup-settings").addEventListener('click',() => popup.backupSettings(currentTab))
-    const storageObject = await chrome.storage.local.get(null)
+    const storageObject = await chrome.storage.local.get(null);
     const fetchExportButton = document.getElementById("fetch-data-exports");
     fetchExportButton.onclick = popup.startExports;
     if(storageObject.exportWindow) popup.toggleExportStatus(fetchExportButton);

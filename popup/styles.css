@@ -51,12 +51,21 @@ fieldset{
 .btn-grid{
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    /*display: flex;*/
     justify-items: center;
     justify-content: space-evenly;
     align-items: center;
     align-content: center;
     grid-row-gap: 2px;
+}
+#domains-label{
+    grid-column: 1 / 1;
+    text-align: center;
+    margin: auto;
+}
+#domains-list{
+    grid-column: 2 / 1;
+    text-align: center;
+    margin: auto;
 }
 .hidden{
     display:none !important;

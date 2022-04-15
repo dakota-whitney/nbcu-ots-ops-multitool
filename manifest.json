@@ -32,7 +32,8 @@
     "https://automatticstatus.com/*",
     "https://theplatform.service-now.com/support_portal/*",
     "https://script.google.com/macros/s/AKfycbyOsqxSw_xOF1sHf1yJTGcKl_F0Y4Zc6ff5NT2f6Y4/*",
-    "https://login.inbcu.com/*"
+    "https://login.inbcu.com/*",
+    "https://*/wp-admin/"
   ],
   "background":{
       "service_worker": "listener.js",
@@ -48,6 +49,11 @@
       "matches": ["https://appstoreconnect.apple.com/apps/*/appstore/*"],
       "run_at": "document_idle",
       "js": ["./content_scripts/apple-store.js"]
+    },
+    {
+      "matches": ["https://play.google.com/console/u/0/developers/5370792382133247542/app/*/app-dashboard?timespan=thirtyDays"],
+      "run_at": "document_idle",
+      "js": ["./content_scripts/google-store.js"]
     }
   ]
 }

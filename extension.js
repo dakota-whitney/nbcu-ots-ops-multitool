@@ -66,7 +66,7 @@ export const getCallLetters = callLetterObject => {
     let input = new String;
     let output = new String;
     do{
-        input = window.prompt(`Get Call Letters:`).trim().toLowerCase();
+        input = prompt(`Get Call Letters:`).trim().toLowerCase();
         output = `Invalid market input: ${input}`;
         if(input.length >= 3){
             if(input.match(/^[A-Z]{3,4}(\/[A-Z]{3,4})?$/i) && !input.match(/utah|dfw|san|new|l[oa]s|bay|el/)){
@@ -83,7 +83,7 @@ export const getCallLetters = callLetterObject => {
                 };
             };
         };
-        window.alert(output);
+        alert(output);
     }while(input && output.includes("Invalid"));
     return output;
 };
@@ -91,7 +91,7 @@ export const getMarketNumbers = marketNumberObject => {
     let input = new String;
     let output = new String;
     do{
-        input = window.prompt(`Get Market Letters:`).trim();
+        input = prompt(`Get Market Letters:`).trim();
         if(input.match(/\d{1,2}$/)){ //Number search
             input = input.match(/\d{1,2}$/)[0];
             for(let [market,marketNumbers] of Object.entries(marketNumberObject)){
@@ -115,9 +115,35 @@ export const getMarketNumbers = marketNumberObject => {
                 };
             };
         };
-        window.alert(output);
+        alert(output);
     }while(input !== "" && output === "")
     return output;
+};
+export const compareElements = settings => {
+    console.log('Settings object: %o',settings);
+    for(const settingsObject of settings){
+        if(!settingsObject) continue;
+        console.log(settingsObject);
+        const {selector,value} = settingsObject;
+        let base;
+        switch(selector[0]){
+            case "#":
+                const target = document.querySelector(selector);
+                if(target.type === "checkbox") base = target.checked ? "Checked" : "Unchecked";
+                else base = target.value;
+                console.log('Target element: %o',target);
+                if(target && base !== value) target.style = `color:#3c0997;border:2px solid #3c0997`;
+            break;
+            case ".":
+                document.querySelectorAll(selector).forEach(target => {
+                    if(target.querySelector("textarea")) base = target.querySelector("textarea").value;
+                    else if(target.querySelector("input")) base = target.querySelector("input").value;
+                    else if(target.querySelector("div[data-e2e='tick-icon']")) base = target.querySelector("div[data-e2e='tick-icon']").value;
+                    if(base !== value) target.style = `color:#3c0997;border:2px solid #3c0997`;
+                })
+            break;
+        }
+    };
 };
 export const otsDomains = [
     "nbcnewyork.com",

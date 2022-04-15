@@ -27,30 +27,51 @@ export const showButtonGrid = e => {
     };
 };
 //Wordpress functions
-export const compareSettings = currentTab => alert('Coming soon!');
-export const backupSettings = async currentTab => {
-    let backupScript = "";
+export const showDomainsList = async e => {
+    let {otsDomains} = await chrome.runtime.sendMessage({request:'domains'});
+    otsDomains = otsDomains.map(domain => domain.split(".")[0]);
+    for(const domain of otsDomains) document.getElementById("domains-list").innerHTML += `<option id="${domain}" value="${domain}" class="domain-option">${domain}</option>`;
+    document.querySelectorAll('.domain-option').forEach(option => option.onclick = compareSettings)
+    document.querySelectorAll("button.tools").forEach(button => button.classList.toggle('hidden'));
+    document.querySelectorAll('.domains').forEach(domainElement => domainElement.classList.toggle('hidden'));
+};
+const compareSettings = async e => {
+    const [baseTab] = await chrome.tabs.query({active:true,currentWindow:true});
+    let {value:compareUrl} = e.target;
+    compareUrl = baseTab.url.replace(/(nbc|telemundo)\w+.com/,`${compareUrl}.com`);
+    const compareTab = await chrome.tabs.create({url:compareUrl,active:false});
+    chrome.storage.local.set({compareTabs:[baseTab.id,compareTab.id]});
+    /*const [{result:compareSettings}] = await chrome.scripting.executeScript({target:{tabId:compareTab.id},func:() => document.body.onload = getWpSettings})
+    await chrome.tabs.update(baseTab.id,{active:true});
+    await chrome.scripting.executeScript({target:{tabId:baseTab.id},func:compareElements,args:[compareSettings]});
+    document.querySelectorAll("button.tools").forEach(button => button.classList.toggle('hidden'));
+    document.querySelectorAll('.domains').forEach(domainElement => domainElement.classList.toggle('hidden'));*/
+};
+export const backupSettings = async currentTabId => {
+    /*let backupScript = "";
     if(currentTab.url.match(/\/wp-admin\//)) backupScript = getWpSettings;
     else if(currentTab.url.match(/console.theplatform.com/)) backupScript = getCvpSettings;
-    else return alert("Invalid URL");
-    let [{result:wpSettings}] = await chrome.scripting.executeScript({target:{tabId:currentTab.id},func:backupScript});
-    if(!wpSettings) return;
-    wpSettings = JSON.stringify(wpSettings,null,2);
-    console.log(wpSettings);
-    const settingsBlob = new Blob([wpSettings],{type:'text/plain'});
-    await chrome.downloads.download({url:URL.createObjectURL(settingsBlob),saveAs:true});
+    else return alert("Invalid URL");*/
+    let [{result:settings}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},files:['./content_scripts/get-settings.js']});
+    if(!settings) return alert('Could not get settings from the current page');
+    settings = JSON.stringify(settings,['setting','value'],2);
+    console.log(settings);
+    const settingsBlob = new Blob([settings],{type:'text/plain'});
+    chrome.downloads.download({url:URL.createObjectURL(settingsBlob),saveAs:true});
 };
-const getWpSettings = () => {
+/*const getWpSettings = () => {
     const wpSettings = new Array;
     const inputs = Array.from(document.getElementById("wpbody").querySelectorAll("input,select")).filter(input => input.id && input.value);
     inputs.forEach((input,i) => {
         const label = document.querySelector(`label[for="${input.id}"]`) ? document.querySelector(`label[for="${input.id}"]`).innerText : "";
         if(!label) return;
+        const id = `#${input.id}`;
         input = input.querySelector("option[selected='selected']") ? input.querySelector("option[selected='selected']").innerText : input;
         if(input.type === "checkbox") input = input.checked ? 'Checked' : 'Unchecked';
         const settingsObject = {
             setting: label,
-            value: typeof input === "string" ? input : input.value
+            value: typeof input === "string" ? input : input.value,
+            selector:id
         };
         wpSettings[i] = settingsObject;
     });
@@ -59,22 +80,27 @@ const getWpSettings = () => {
 };
 const getCvpSettings = () => {
     const cvpSettings = new Array;
-    document.querySelectorAll(".Container-sc-sc-wiilmn").forEach((div,i) => {
+    const selectorClass = ".Container-sc-sc-wiilmn";
+    document.querySelectorAll(selectorClass).forEach((div,i) => {
         const label = div.querySelector("label") ? div.querySelector("label").innerText : "";
         if(!label) return;
         let value = new String;
         if(div.querySelector("textarea")) value = div.querySelector("textarea").innerText;
         else if(div.querySelector("input")) value = div.querySelector("input").value;
         else if(div.querySelector("div[data-e2e='tick-icon']")) value = div.querySelector("div[data-e2e='tick-icon']").value ? 'Checked' : 'Unchecked';
-        if(label) cvpSettings[i] = {setting:label,value:value}
+        if(label) cvpSettings[i] = {
+            setting:label,
+            value:value,
+            selector:selectorClass
+        };
     });
     console.log(cvpSettings);
     return cvpSettings;
-};
+};*/
 //VIP CLI Functions
 export const getCliCommand = async (currentTabId,command) => {
     const [{result:commandString}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},func:getCommandString,args:[command]});
-    return commandString ? window.prompt("Run the command below in your terminal:",commandString) : alert("Command not available");
+    return commandString ? prompt("Run the command below in your terminal:",commandString) : alert("Command not available");
 };
 //Content script
 const getCommandString = command => {
@@ -116,7 +142,7 @@ export const toggleAppStatus = fetchButton => {
     };
 };
 export const fetchAppMetadata = e => {
-    const sheetId = window.prompt("App Metadata Sheet ID:");
+    const sheetId = prompt("App Metadata Sheet ID:");
     if(!sheetId) return;
     toggleLoading(e.target);
     fetch(`https://script.google.com/macros/s/AKfycbyOsqxSw_xOF1sHf1yJTGcKl_F0Y4Zc6ff5NT2f6Y4/dev?sheetId=${sheetId}`)
@@ -166,7 +192,7 @@ export const toggleExportStatus = exportButton => {
     };
 };
 export const startExports = async e => {
-    if(window.confirm(`Please verify you are logged in to NBCU SSO before launching export sites`)){
+    if(confirm(`Please verify you are logged in to NBCU SSO before launching export sites`)){
         let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
         exportPageIndex = exportPageIndex ? exportPageIndex : 0;
         chrome.runtime.sendMessage({request:'start-exports',pageIndex:exportPageIndex}).then(response => console.log(`Extension is: ${response.status}`))
@@ -194,7 +220,7 @@ export const writeDsrBatch = async (currentTabId,requestType) => {
         const requestorEmails = await response.json();
         console.log(requestorEmails);
         console.log(`Stage 3 Users on this page: ${requestorEmails.join(" ")}`);
-        window.prompt("Run the following command to create data exports for these DSRs",`for email in ${requestorEmails.join(" ")};do vip @nbcots.production wp -y -- nbc export_user_personal_data --type=export --email="$email";done`);
+        prompt("Run the following command to create data exports for these DSRs",`for email in ${requestorEmails.join(" ")};do vip @nbcots.production wp -y -- nbc export_user_personal_data --type=export --email="$email";done`);
     });
 };
 //Content script

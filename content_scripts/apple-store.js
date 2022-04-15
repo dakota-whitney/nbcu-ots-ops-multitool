@@ -23,8 +23,7 @@
                 inputElement.dispatchEvent(new InputEvent('input'));
                 inputElement.value = metadata;
                 inputElement.innerText = metadata;
-                inputElement.style.color = '#3c0997';
-                inputElement.style.border = '2px solid #3c0997';
+                inputElement.style = `color:#3c0997;border:2px solid #3c0997`;
             }else console.log(`%cFailed to autofill \nElement: ${elementString}\nMetadata: ${metadata}`,'color:yellow;font-style:italic;')
         };
         const selectBuildsBtn = document.querySelector("button.select-builds-button___1E97t");
@@ -51,14 +50,16 @@
             if(mutationRecord.target.querySelector("input[name='versionString'].has-meta")) autofillAppleStore();
         });
     };
-    const appleId = window.location.href.split("/").find(path => path.match(/^\d+$/));
+    const appleId = location.pathname.split("/").find(path => path.match(/^\d+$/));
     console.log(`Apple ID: ${appleId}`);
     const {otsAppMetadata} = await chrome.storage.local.get('otsAppMetadata');
+    if(!otsAppMetadata) return;
     const {[appleId]:marketData} = otsAppMetadata;
+    if(!marketData) return;
     const observer = new MutationObserver(handleSelectBuilds);
     observer.observe(document.querySelector("body"),{childList:true,subtree:true});
     chrome.runtime.onMessage.addListener((message,sender,sendResponse) => {
         autofillAppleStore();
         sendResponse({status:`Autofilled app store metadata`});
-    })
+    });
 })();

@@ -1,4 +1,15 @@
 import * as extension from './extension.js';
+//Tabs updated listener
+chrome.tabs.onUpdated.addListener(async (tabId,changeInfo) => {
+    console.log(`Tab ${tabId} has been updated %o`,changeInfo);
+    const {status} = changeInfo;
+    if(!status) return
+    const storage = await chrome.storage.local.get(null);
+    if(storage.compareTabs && tabId === storage.compareTabs[1] && status === "complete"){
+        const [{result:compareSettings}] = await chrome.scripting.executeScript({target:{tabId:tabId},files:['./content_scripts/get-settings.js']});
+        await chrome.scripting.executeScript({target:{tabId:storage.compareTabs[0]},func:extension.compareElements,args:[compareSettings]});
+    };
+})
 //Message listener
 chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
     console.log(`listener.js received ${message.request} request`)
@@ -22,11 +33,8 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
             extension.stopExports();
             sendResponse({status:`Data Requests have stopped downloading. Any exports already downloaded will remain in your downloads folder`})
         break;
-        case "flush-ots-cache":
-            const {environment} = message;
-            const domainsToFlush = extension.otsDomains.map(domain => `https://${environment}.${domain}/`);
-            chrome.browsingData.remove({"origins":domainsToFlush},{"appcache":true,"cache":true,"cacheStorage":true,});
-            sendResponse({status:`Browser cache for all OTS sites has been flushed`})
+        case "domains":
+            sendResponse({otsDomains:extension.otsDomains});
         break;
     };
     return true; //Required if using async code above
