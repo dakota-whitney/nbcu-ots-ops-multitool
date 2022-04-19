@@ -144,11 +144,9 @@ export const toggleExportStatus = exportButton => {
         exportButton.onclick = startExports;
     };
 };
-export const startExports = async e => {
+export const startExports = e => {
     if(confirm(`Please verify you are logged in to NBCU SSO before launching export sites`)){
-        let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
-        exportPageIndex = exportPageIndex ? exportPageIndex : 0;
-        chrome.runtime.sendMessage({request:'start-exports',pageIndex:exportPageIndex}).then(response => console.log(`Extension is: ${response.status}`))
+        chrome.runtime.sendMessage({request:'start-exports'}).then(response => console.log(`Extension is: ${response.status}`))
         toggleExportStatus(e.target);
     };
 };

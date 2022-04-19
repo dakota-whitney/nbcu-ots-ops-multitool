@@ -6,7 +6,7 @@
         if(dataRequests.length > 0){
             dataRequests.forEach((request,i) => {
                 setTimeout(() => request.querySelector('button.export-personal-data-handle').click(),i * 2000);
-                if(i === dataRequests.length - 1) downloadsDoneObserver.observe(request,{attributes:true,attributeFilter:["class"]});
+                if(i >= dataRequests.length - 1) downloadsDoneObserver.observe(request,{attributes:true,attributeFilter:["class"]});
             });
         }else console.error(dataRequests,'downloadExports was called on an empty user list')
     };

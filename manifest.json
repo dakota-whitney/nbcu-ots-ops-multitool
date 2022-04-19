@@ -32,7 +32,7 @@
     "https://automatticstatus.com/*",
     "https://theplatform.service-now.com/support_portal/*",
     "https://script.google.com/macros/s/AKfycbyOsqxSw_xOF1sHf1yJTGcKl_F0Y4Zc6ff5NT2f6Y4/*",
-    "https://login.inbcu.com/*",
+    "https://login.stg.inbcu.com/*",
     "https://*/wp-admin/"
   ],
   "background":{
