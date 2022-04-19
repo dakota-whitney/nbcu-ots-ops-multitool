@@ -25,42 +25,46 @@ export const openExportWindow = async pageIndex => {
     chrome.storage.local.set({exportWindow:exportWindow.id,exportPageRequestCount:0})
 };
 export const stopExports = async () => {
-    const {exportWindow} = await chrome.storage.local.get('exportWindow');
-    chrome.windows.remove(exportWindow).catch(error => console.log(error.message));
-    const {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
-    const currentMarketExports = await chrome.downloads.search({query:['wp-personal-data-file'],orderBy:["startTime"],urlRegex:otsDomains[exportPageIndex]})
-    if(currentMarketExports.length > 0){
-        currentMarketExports.forEach(async (dataExport,i) => {
-            await chrome.downloads.removeFile(dataExport.id)
+    const {exportWindow,exportPageIndex} = await chrome.storage.local.get(null);
+    if(exportWindow) chrome.windows.remove(exportWindow);
+    const currentExports = await chrome.downloads.search({query:['wp-personal-data-file'],orderBy:["startTime"],urlRegex:otsDomains[exportPageIndex]})
+    if(currentExports.length > 0){
+        currentExports.forEach(async (dataExport,i) => {
+            if(dataExport.state === "completed") await chrome.downloads.removeFile(dataExport.id)
             await chrome.downloads.erase({id:dataExport.id});
-            if(i === currentMarketExports.length - 1) chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => chrome.action.setBadgeText({text:`${totalExports.length}`}))
+            if(i === currentExports.length - 1) chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => chrome.action.setBadgeText({text:`${totalExports.length}`}))
         });
     }else chrome.downloads.search({query:['wp-personal-data-file']}).then(totalExports => totalExports.length > 0 ? chrome.action.setBadgeText({text:`${totalExports.length}`}) : chrome.action.setBadgeText({text:""}));
-    chrome.storage.local.remove(['exportPageRequestCount','exportWindow']);
+    chrome.storage.local.remove('exportPageRequestCount');
     chrome.contentSettings.automaticDownloads.clear({});
     chrome.power.releaseKeepAwake();
 };
 export const openNextExportTab = async currentExportPage => {
     console.log(`Current export page: ${currentExportPage.url}`);
-    chrome.downloads.search({query:['wp-personal-data-file','(',')'],state:"complete"})
-    .then(duplicateExports => duplicateExports.forEach(duplicate => chrome.downloads.removeFile(duplicate.id).then(() => chrome.downloads.erase({id:duplicate.id}))));
+    /*chrome.downloads.search({query:['wp-personal-data-file','(',')'],state:"complete"})
+    .then(duplicateExports => duplicateExports.forEach(duplicate => chrome.downloads.removeFile(duplicate.id).then(() => chrome.downloads.erase({id:duplicate.id}))));*/
     let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex')
     console.log(`exportPageIndex: ${exportPageIndex}`);
     exportPageIndex++;
-    chrome.storage.local.set({exportPageIndex:exportPageIndex})
     if(exportPageIndex <= otsDomains.length - 1){
         const nextExportPage = `https://stage.${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
         console.log(`Next export page: ${nextExportPage}`);
         await chrome.tabs.create({windowId:currentExportPage.windowId,url:nextExportPage});
         chrome.tabs.remove(currentExportPage.id);
+        chrome.storage.local.set({exportPageIndex:exportPageIndex})
     }else{
         console.log(`Exports complete.\nResetting extension export settings`);
         await chrome.windows.remove(currentExportPage.windowId)
-        stopExports();
-        chrome.storage.local.remove('exportPageIndex');
+        chrome.storage.local.remove(['exportPageIndex','exportPageRequestCount']);
         chrome.action.setBadgeText({text:''});
         createNotification('ccpaDownloadsComplete');
     };
+};
+export const reloadExportTab = async currentTabId => {
+    const {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
+    const currentExportPage = `https://stage.${otsDomains[exportPageIndex]}/wp-admin/export-personal-data.php`;
+    await chrome.tabs.create({url:currentExportPage});
+    chrome.tabs.remove(currentTabId);
 };
 export const getCallLetters = callLetterObject => {
     let input = new String;

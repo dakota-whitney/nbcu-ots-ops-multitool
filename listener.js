@@ -1,15 +1,25 @@
 import * as extension from './extension.js';
 //Tabs updated listener
 chrome.tabs.onUpdated.addListener(async (tabId,changeInfo) => {
-    console.log(`Tab ${tabId} has been updated %o`,changeInfo);
+    const changedTab = await chrome.tabs.get(tabId);
+    console.log(`Tab ${changedTab.id} has been updated %o`,changeInfo);
     const {status} = changeInfo;
     if(!status) return
     const storage = await chrome.storage.local.get(null);
+    if(storage.exportWindow && changeInfo.url && changedTab.windowId == storage.exportWindow){
+        if(changeInfo.url.match(/(?<=(inbcu\.com\/)|(wp-))login/)) chrome.scripting.executeScript({target:{tabId:tabId},func:() => alert('Please log in to SSO to continue downloads')});
+        else if(changeInfo.url.match(/\/wp-content\//)) extension.reloadExportTab(tabId);
+    }
     if(storage.compareTabs && tabId === storage.compareTabs[1] && status === "complete"){
         const [{result:compareSettings}] = await chrome.scripting.executeScript({target:{tabId:tabId},files:['./content_scripts/get-settings.js']});
         await chrome.scripting.executeScript({target:{tabId:storage.compareTabs[0]},func:extension.compareElements,args:[compareSettings]});
     };
-})
+});
+//Window closed listener
+chrome.windows.onRemoved.addListener(async (windowId) => {
+    const {exportWindow} = await chrome.storage.local.get('exportWindow');
+    if(exportWindow && windowId == exportWindow) chrome.storage.local.remove('exportWindow');
+});
 //Message listener
 chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
     console.log(`listener.js received ${message.request} request`)
@@ -40,8 +50,7 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
     return true; //Required if using async code above
 });
 chrome.downloads.onDeterminingFilename.addListener(async (download,suggest) => {
-    console.log(`Download detected:`);
-    console.log(download);
+    console.log(`Download ${download.id} detected: %o`,download);
     if(download.filename.match('wp-personal-data-file')){
         suggest();
         const {exportPageRequestCount} = await chrome.storage.local.get('exportPageRequestCount');
@@ -61,6 +70,16 @@ chrome.downloads.onDeterminingFilename.addListener(async (download,suggest) => {
         };
     };
     return true;
+});
+//Download changed listener
+chrome.downloads.onChanged.addListener(async (downloadDelta) => {
+    const {id,state} = downloadDelta;
+    console.log(`Download ${id} changed: %o`,downloadDelta);
+    const {exportWindow} = await chrome.storage.local.get('exportWindow');
+    if(exportWindow && state && state.current === "complete"){
+        const dataExport = await chrome.downloads.search({id:id});
+        if(dataExport.filename.match(/\(\d+\).zip$/)) chrome.downloads.removeFile(id).then(() => chromw.downloads.erase({id:id}))
+    };
 });
 //Download Erased Listener
 chrome.downloads.onErased.addListener(download => console.log(`${download.filename} erased`));
@@ -102,10 +121,10 @@ chrome.commands.onCommand.addListener(async (command,tab) => {
 //Suspend listener
 chrome.runtime.onSuspend.addListener(() => {
     console.log(`onSuspend triggered`);
-    extension.stopExports();
+    chrome.storage.local.remove(['exportPageRequestCount','compareTabs']);
 });
 //SuspendCanceled
 chrome.runtime.onSuspendCanceled.addListener(() => {
     console.log(`onSuspendCanceled triggered`);
-    extension.stopExports();
+    chrome.storage.local.remove(['exportPageRequestCount','compareTabs']);
 });

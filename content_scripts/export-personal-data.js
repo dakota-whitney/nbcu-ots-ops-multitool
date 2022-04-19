@@ -21,7 +21,7 @@
     const downloadsDoneObserver = new MutationObserver(handleDownloadsDone);
     const userDataRequests = Array.from(document.getElementById("the-list").children);
     exportPageRequestCount = userDataRequests.length;
-    await chrome.storage.local.set({exportPageRequestCount:exportPageRequestCount});
+    chrome.storage.local.set({exportPageRequestCount:exportPageRequestCount});
     downloadExports(userDataRequests);
     chrome.runtime.onMessage.addListener((message,sender,sendResponse) => {
         switch(message.command){

@@ -41,17 +41,8 @@ const compareSettings = async e => {
     compareUrl = baseTab.url.replace(/(nbc|telemundo)\w+.com/,`${compareUrl}.com`);
     const compareTab = await chrome.tabs.create({url:compareUrl,active:false});
     chrome.storage.local.set({compareTabs:[baseTab.id,compareTab.id]});
-    /*const [{result:compareSettings}] = await chrome.scripting.executeScript({target:{tabId:compareTab.id},func:() => document.body.onload = getWpSettings})
-    await chrome.tabs.update(baseTab.id,{active:true});
-    await chrome.scripting.executeScript({target:{tabId:baseTab.id},func:compareElements,args:[compareSettings]});
-    document.querySelectorAll("button.tools").forEach(button => button.classList.toggle('hidden'));
-    document.querySelectorAll('.domains').forEach(domainElement => domainElement.classList.toggle('hidden'));*/
 };
 export const backupSettings = async currentTabId => {
-    /*let backupScript = "";
-    if(currentTab.url.match(/\/wp-admin\//)) backupScript = getWpSettings;
-    else if(currentTab.url.match(/console.theplatform.com/)) backupScript = getCvpSettings;
-    else return alert("Invalid URL");*/
     let [{result:settings}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},files:['./content_scripts/get-settings.js']});
     if(!settings) return alert('Could not get settings from the current page');
     settings = JSON.stringify(settings,['setting','value'],2);
@@ -59,44 +50,6 @@ export const backupSettings = async currentTabId => {
     const settingsBlob = new Blob([settings],{type:'text/plain'});
     chrome.downloads.download({url:URL.createObjectURL(settingsBlob),saveAs:true});
 };
-/*const getWpSettings = () => {
-    const wpSettings = new Array;
-    const inputs = Array.from(document.getElementById("wpbody").querySelectorAll("input,select")).filter(input => input.id && input.value);
-    inputs.forEach((input,i) => {
-        const label = document.querySelector(`label[for="${input.id}"]`) ? document.querySelector(`label[for="${input.id}"]`).innerText : "";
-        if(!label) return;
-        const id = `#${input.id}`;
-        input = input.querySelector("option[selected='selected']") ? input.querySelector("option[selected='selected']").innerText : input;
-        if(input.type === "checkbox") input = input.checked ? 'Checked' : 'Unchecked';
-        const settingsObject = {
-            setting: label,
-            value: typeof input === "string" ? input : input.value,
-            selector:id
-        };
-        wpSettings[i] = settingsObject;
-    });
-    console.log(wpSettings);
-    return wpSettings;
-};
-const getCvpSettings = () => {
-    const cvpSettings = new Array;
-    const selectorClass = ".Container-sc-sc-wiilmn";
-    document.querySelectorAll(selectorClass).forEach((div,i) => {
-        const label = div.querySelector("label") ? div.querySelector("label").innerText : "";
-        if(!label) return;
-        let value = new String;
-        if(div.querySelector("textarea")) value = div.querySelector("textarea").innerText;
-        else if(div.querySelector("input")) value = div.querySelector("input").value;
-        else if(div.querySelector("div[data-e2e='tick-icon']")) value = div.querySelector("div[data-e2e='tick-icon']").value ? 'Checked' : 'Unchecked';
-        if(label) cvpSettings[i] = {
-            setting:label,
-            value:value,
-            selector:selectorClass
-        };
-    });
-    console.log(cvpSettings);
-    return cvpSettings;
-};*/
 //VIP CLI Functions
 export const getCliCommand = async (currentTabId,command) => {
     const [{result:commandString}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},func:getCommandString,args:[command]});
