@@ -33,16 +33,15 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
             sendResponse({status:'starting exports'});
             let {exportPageIndex} = await chrome.storage.local.get('exportPageIndex');
             const totalExports = await chrome.downloads.search({query:['wp-personal-data-file']});
-            exportPageIndex = exportPageIndex ? exportPageIndex : 0;
-            chrome.storage.local.set({exportPageIndex:exportPageIndex});
+            exportPageIndex = exportPageIndex && totalExports.length > 0 ? exportPageIndex : 0;
             if(exportPageIndex > 0) chrome.action.setBadgeText({text:`${totalExports.length}`});
             else{
                 totalExports.forEach(dataExport => {
                     chrome.downloads.removeFile(dataExport.id)
                     .then(() => chrome.downloads.erase({id:dataExport.id}).catch(error => console.log(error.message)))
-                    .catch(error => console.error(error.message));
+                    .catch(error => console.log(error.message));
                 });
-                chrome.action.setBadgeText({text:'0'});
+                chrome.action.setBadgeText({text:'0'})
             };
             extension.openExportWindow(exportPageIndex);
         break;
@@ -58,16 +57,15 @@ chrome.runtime.onMessage.addListener(async (message,sender,sendResponse) => {
 });
 chrome.downloads.onDeterminingFilename.addListener(async (download,suggest) => {
     console.log(`Download ${download.id} detected: %o`,download);
+    suggest();
+    const {exportPageRequestCount} = await chrome.storage.local.get('exportPageRequestCount');
     if(download.filename.match('wp-personal-data-file')){
-        suggest();
-        const {exportPageRequestCount} = await chrome.storage.local.get('exportPageRequestCount');
-        if(!exportPageRequestCount) return extension.stopExports();
+        const [currentExportTab] = await chrome.tabs.query({url:download.referrer});
+        if(!currentExportTab) return extension.stopExports();
         let completedExports = await chrome.downloads.search({query:["wp-personal-data-file"]});
         completedExports.length >= 1000 ? chrome.action.setBadgeText({text:`${(completedExports.length / 1000).toString().substring(0,3)}k`}) : chrome.action.setBadgeText({text:`${completedExports.length}`});
         completedExports = completedExports.filter(dataExport => dataExport.referrer == download.referrer);
         console.log(`Completed exports for market ${download.referrer.split("/")[2]}: ${completedExports.length} / ${exportPageRequestCount}`)
-        const [currentExportTab] = await chrome.tabs.query({url:download.referrer});
-        if(!currentExportTab) return extension.stopExports();
         if(completedExports.length >= exportPageRequestCount) extension.openNextExportTab(currentExportTab)
         else{
             let requestor = download.filename.split("-");
@@ -92,7 +90,7 @@ chrome.downloads.onChanged.addListener(async (downloadDelta) => {
     };
 });
 //Download Erased Listener
-chrome.downloads.onErased.addListener(download => console.log(`${download.filename} erased`));
+chrome.downloads.onErased.addListener(download => console.log(`Download erased: %o`,download));
 //Storage listener
 chrome.storage.onChanged.addListener(async (changes,namespace) => {
     for(const [key,{oldValue,newValue}] of Object.entries(changes)){

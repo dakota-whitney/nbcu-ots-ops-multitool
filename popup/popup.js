@@ -156,7 +156,8 @@ export const stopExports = async e => {
     toggleExportStatus(e.target);
 };
 export const writeDsrBatch = async (currentTabId,requestType) => {
-    requestType = requestType.split['-'][1];
+    console.log(requestType);
+    requestType = requestType.split('-')[1];
     console.log(`Request Type: ${requestType}`);
     const [{result:exportResults}] = await chrome.scripting.executeScript({target:{tabId:currentTabId},func:getDsrBatch,args:[requestType]})
     console.log(exportResults);

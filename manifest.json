@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Ops Multi-Tool",
-  "version": "1.0",
+  "version": "0.0.0.1",
   "description": "Extension to automate common NBC OTS Operations web browser tasks",
-  "permissions": ["tabs","desktopCapture","storage","notifications","commands","activeTab","scripting","downloads","contentSettings","power"],
+  "permissions": ["tabs","storage","notifications","commands","activeTab","scripting","downloads","contentSettings","power"],
   "action": {
     "default_title": "Ops Multi-Tool",
     "default_popup": "popup/index.html",

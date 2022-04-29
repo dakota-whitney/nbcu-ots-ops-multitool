@@ -28,20 +28,19 @@ export const openExportWindow = async pageIndex => {
     chrome.contentSettings.automaticDownloads.set({primaryPattern:`https://*/*`,setting:'allow'});
     chrome.power.requestKeepAwake('system');
     const exportWindow = await chrome.windows.create({state:'minimized',url:`https://stage.${otsDomains[pageIndex]}/wp-admin/export-personal-data.php`});
-    chrome.storage.local.set({exportWindow:exportWindow.id,exportPageRequestCount:0})
+    chrome.storage.local.set({exportWindow:exportWindow.id,exportPageIndex:pageIndex,exportPageRequestCount:0})
 };
 export const stopExports = async () => {
     const {exportWindow,exportPageIndex} = await chrome.storage.local.get(null);
     if(exportWindow) chrome.windows.remove(exportWindow).catch(e => console.log(e.message));
-    const totalExports = await chrome.downloads.search({query:['wp-personal-data-file'],state:"complete"});
-    const currentExports = totalExports.filter(dataExport => dataExport.referrer.match(otsDomains[exportPageIndex]))
+    const currentExports = await chrome.downloads.search({query:['wp-personal-data-file'],urlRegex:otsDomains[exportPageIndex],state:"complete"});
     if(currentExports.length > 0){
         currentExports.forEach(async dataExport => {
             await chrome.downloads.removeFile(dataExport.id);
             await chrome.downloads.erase({id:dataExport.id});
         });
     };
-    totalExports.length - currentExports.length > 0 ? chrome.action.setBadgeText({text:`${totalExports.length}`}) : chrome.action.setBadgeText({text:""});
+    chrome.action.setBadgeText({text:""});
     chrome.storage.local.remove(['exportPageRequestCount','exportWindow']);
     chrome.contentSettings.automaticDownloads.clear({});
     chrome.power.releaseKeepAwake();
@@ -132,16 +131,16 @@ export const compareElements = settings => {
     console.log('Settings object: %o',settings);
     for(const settingsObject of settings){
         if(!settingsObject) continue;
-        console.log(settingsObject);
         const {selector,value} = settingsObject;
         let base;
         switch(selector[0]){
             case "#":
                 const target = document.querySelector(selector);
+                if(!target) continue;
                 if(target.type === "checkbox") base = target.checked ? "Checked" : "Unchecked";
+                else if(target.querySelector('option[selected]')) base = target.querySelector('option[selected]').innerText;
                 else base = target.value;
-                console.log('Target element: %o',target);
-                if(target && base !== value) target.style = `color:#3c0997;border:2px solid #3c0997`;
+                if(base && base !== value) target.style = `color:#3c0997;border:2px solid #3c0997`;
             break;
             case ".":
                 document.querySelectorAll(selector).forEach(target => {

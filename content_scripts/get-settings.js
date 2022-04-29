@@ -1,19 +1,19 @@
 (() => {
-    console.log(`Compare Settings injected`);
+    console.log(`Get Settings injected`);
     if(location.href.match(/\/wp-admin\//)){
         const wpSettings = new Array;
-        const inputs = Array.from(document.getElementById("wpbody").querySelectorAll("input,select")).filter(input => input.id);
+        const inputs = Array.from(document.getElementById("wpbody").querySelectorAll("input,select")).filter(input => input.type !== 'submit' && input.id);
+        let label = "";
         inputs.forEach((input,i) => {
-            const label = document.querySelector(`label[for="${input.id}"]`) ? document.querySelector(`label[for="${input.id}"]`).innerText : "";
-            if(!label) return;
+            label = document.querySelector(`label[for="${input.id}"]`) ? document.querySelector(`label[for="${input.id}"]`).innerText : label;
             const id = `#${input.id}`;
-            input = input.querySelector("option[selected='selected']") ? input.querySelector("option[selected='selected']").innerText : input;
+            if(input.querySelector("option[selected]")) input = input.querySelector("option[selected]").innerText;
             if(input.type === "checkbox") input = input.checked ? 'Checked' : 'Unchecked';
-            const settingsObject = {
-                setting: label,
-                value: typeof input === "string" ? input : input.value,
-                selector:id
-            };
+            input = typeof input === "string" ? input : input.value;
+            const settingsObject = new Object;
+            if(label) settingsObject.setting = label;
+            settingsObject.value = input;
+            settingsObject.selector = id;
             wpSettings[i] = settingsObject;
         });
         console.log(wpSettings);
@@ -23,16 +23,15 @@
         const selectorClass = ".Container-sc-sc-wiilmn";
         document.querySelectorAll(selectorClass).forEach((div,i) => {
             const label = div.querySelector("label") ? div.querySelector("label").innerText : "";
-            if(!label) return;
-            let value = new String;
+            let value = "";
             if(div.querySelector("textarea")) value = div.querySelector("textarea").innerText;
             else if(div.querySelector("input")) value = div.querySelector("input").value;
             else if(div.querySelector("div[data-e2e='tick-icon']")) value = div.querySelector("div[data-e2e='tick-icon']").value ? 'Checked' : 'Unchecked';
-            if(label) cvpSettings[i] = {
-                setting:label,
-                value:value,
-                selector:selectorClass
-            };
+            const settingsObject = new Object;
+            if(label) settingsObject.setting = label;
+            settingsObject.value = value;
+            settingsObject.selector = selectorClass;
+            cvpSettings[i] = settingsObject;
         });
         console.log(cvpSettings);
         return cvpSettings;

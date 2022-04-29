@@ -14,8 +14,7 @@
         const headingStyle = 'text-decoration:underline;font-weight:bolder;padding:5px;background-color:#3c0997;color:white;';
         console.clear();
         console.group('%cOps Multitool',headingStyle);
-        console.log(`%cThis market's metadata:`,headingStyle);
-        console.log(marketData);
+        console.log(`%cThis market's metadata:%o`,headingStyle,marketData);
         for(let [elementString,dataKey] of Object.entries(selectorMetadataMap)){
             const inputElement = document.querySelector(elementString);
             const {[dataKey]:metadata} = marketData.storeChanges;
@@ -23,7 +22,7 @@
                 inputElement.dispatchEvent(new InputEvent('input'));
                 inputElement.value = metadata;
                 inputElement.innerText = metadata;
-                inputElement.style = `color:#3c0997;border:2px solid #3c0997`;
+                inputElement.style = `color:#3c0997;border:2px solid #3c0997;overflow:hidden auto;`;
             }else console.log(`%cFailed to autofill \nElement: ${elementString}\nMetadata: ${metadata}`,'color:yellow;font-style:italic;')
         };
         const selectBuildsBtn = document.querySelector("button.select-builds-button___1E97t");
